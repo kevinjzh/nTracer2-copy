@@ -41,8 +41,8 @@ COPY backend /app
 COPY --from=backend-builder /app/algorithm/astar/*.so ./app/algorithm/astar/
 COPY --from=backend-builder /root/.local /root/.local
 COPY --from=dashboard-builder /app/build /app/dashboard
-COPY docker_runner.sh /app/docker_runner.sh
+#COPY docker_runner.sh /app/docker_runner.sh
 #COPY db/data /mnt/data1
 COPY /landing /app/landing
 WORKDIR /app
-CMD /app/docker_runner.sh
+CMD ["python", "main.py", "-a", "0.0.0.0", "-p", "8050"]
