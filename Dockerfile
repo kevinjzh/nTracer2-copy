@@ -21,9 +21,19 @@ RUN npm run build
 
 FROM python:3.10-slim
 RUN mkdir /app
+
 ENV INTERNAL_NEUROGLANCER_ADDRESS=0.0.0.0
 ENV INTERNAL_NEUROGLANCER_PORT=8050
 ENV INTERNAL_SERVER_PORT=8085
+ENV DATABASE_URL=http://localhost
+ENV PRECOMPUTED_URL=precomputed://https://ntracer2.cai-lab.org/data2
+ENV PRECOMPUTED_URL_DOCKER=precomputed://https://ntracer2.cai-lab.org/data2
+ENV PRECOMPUTED_ANNOTATION_URL=precomputed://http://localhost:8070
+ENV DATASET_ID=sample_ch1
+ENV NEUROGLANCER_TOKEN=cailab1357
+ENV NEUROGLANCER_PORT=8050
+ENV PUBLIC_URL=http://localhost
+
 ENV PATH=/root/.local/bin:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends libx264-dev
 COPY backend /app
