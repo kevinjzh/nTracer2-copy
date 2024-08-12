@@ -45,4 +45,7 @@ COPY --from=dashboard-builder /app/build /app/dashboard
 #COPY db/data /mnt/data1
 COPY /landing /app/landing
 WORKDIR /app
+
+EXPOSE 8050
+
 CMD ["python", "main.py", "-a", "0.0.0.0", "-p", "8050"]
