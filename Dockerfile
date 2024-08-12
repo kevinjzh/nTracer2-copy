@@ -46,6 +46,6 @@ COPY --from=dashboard-builder /app/build /app/dashboard
 COPY /landing /app/landing
 WORKDIR /app
 
-EXPOSE 8050
+EXPOSE 8085
 
-CMD ["python", "main.py", "-a", "0.0.0.0", "-p", "8050"]
+CMD ["python", "main.py", "-a", "0.0.0.0"]
