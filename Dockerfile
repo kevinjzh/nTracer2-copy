@@ -22,14 +22,14 @@ RUN npm run build
 FROM python:3.10-slim
 RUN mkdir /app
 
-ENV INTERNAL_NEUROGLANCER_ADDRESS=0.0.0.0
+ENV INTERNAL_NEUROGLANCER_ADDRESS=localhost
 ENV INTERNAL_NEUROGLANCER_PORT=8050
 ENV INTERNAL_SERVER_PORT=8085
 
-ENV DATABASE_URL=https://ntracer2.cai-lab.org/data2/
-ENV PRECOMPUTED_URL=precomputed://https://ntracer2.cai-lab.org/data2/
-ENV PRECOMPUTED_URL_DOCKER=precomputed://https://ntracer2.cai-lab.org/data2/
-ENV PRECOMPUTED_ANNOTATION_URL=precomputed://https://ntracer2.cai-lab.org/data2/
+ENV DATABASE_URL=https://sonic2.cai-lab.org/data2/
+ENV PRECOMPUTED_URL=precomputed://https://sonic2.cai-lab.org/data2/
+ENV PRECOMPUTED_URL_DOCKER=precomputed://https://sonic2.cai-lab.org/data2/
+ENV PRECOMPUTED_ANNOTATION_URL=precomputed://https://sonic2.cai-lab.org/data2/
 
 ENV NEUROGLANCER_TOKEN=cailab1357
 ENV NEUROGLANCER_PORT=8050
@@ -40,8 +40,6 @@ ENV DATASET_ID=packed2
 ENV PATH=/root/.local/bin:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends libx264-dev 
 RUN apt-get install -y nginx
-
-COPY nginx.conf /etc/nginx/sites-available/default
 
 COPY backend /app
 #COPY --from=db-builder /app/a.out /app/db-server
@@ -55,6 +53,5 @@ WORKDIR /app
 
 EXPOSE 8085
 EXPOSE 8050
-EXPOSE 80
 
 CMD ["python", "main.py"]
