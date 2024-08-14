@@ -26,10 +26,10 @@ ENV INTERNAL_NEUROGLANCER_ADDRESS=localhost
 ENV INTERNAL_NEUROGLANCER_PORT=8050
 ENV INTERNAL_SERVER_PORT=8085
 
-ENV DATABASE_URL=https://sonic2.cai-lab.org/data2/
-ENV PRECOMPUTED_URL=precomputed://https://sonic2.cai-lab.org/data2/
-ENV PRECOMPUTED_URL_DOCKER=precomputed://https://sonic2.cai-lab.org/data2/
-ENV PRECOMPUTED_ANNOTATION_URL=precomputed://https://sonic2.cai-lab.org/data2/
+ENV DATABASE_URL=https://sonic2.cai-lab.org/data/
+ENV PRECOMPUTED_URL=precomputed://https://sonic2.cai-lab.org/data/
+ENV PRECOMPUTED_URL_DOCKER=precomputed://https://sonic2.cai-lab.org/data/
+ENV PRECOMPUTED_ANNOTATION_URL=precomputed://https://sonic2.cai-lab.org/data/
 
 ENV NEUROGLANCER_TOKEN=cailab1357
 ENV NEUROGLANCER_PORT=8050
