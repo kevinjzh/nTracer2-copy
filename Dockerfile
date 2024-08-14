@@ -39,7 +39,7 @@ ENV DATASET_ID=packed2
 
 ENV PATH=/root/.local/bin:$PATH
 RUN apt-get update && apt-get install -y --no-install-recommends libx264-dev 
-RUN apt-get install nginx
+RUN apt-get install -y nginx
 
 COPY nginx.conf /etc/nginx/sites-available/default
 
