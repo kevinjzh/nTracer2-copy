@@ -38,7 +38,11 @@ ENV PUBLIC_URL=http://localhost
 ENV DATASET_ID=packed2
 
 ENV PATH=/root/.local/bin:$PATH
-RUN apt-get update && apt-get install -y --no-install-recommends libx264-dev
+RUN apt-get update && apt-get install -y --no-install-recommends libx264-dev 
+RUN apt-get install nginx
+
+COPY nginx.conf /etc/nginx/sites-available/default
+
 COPY backend /app
 #COPY --from=db-builder /app/a.out /app/db-server
 COPY --from=backend-builder /app/algorithm/astar/*.so ./app/algorithm/astar/
@@ -51,5 +55,6 @@ WORKDIR /app
 
 EXPOSE 8085
 EXPOSE 8050
+EXPOSE 80
 
 CMD ["python", "main.py"]
