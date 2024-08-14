@@ -50,5 +50,6 @@ COPY /landing /app/landing
 WORKDIR /app
 
 EXPOSE 8085
+EXPOSE 8050
 
-CMD ["python", "main.py", "-a", "0.0.0.0"]
+CMD ["python", "main.py"]
