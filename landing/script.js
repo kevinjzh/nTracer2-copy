@@ -29,12 +29,12 @@ function loadDataset(url) {
 let newWindow = null; // This will hold the reference to your new window
 
 // "About" content
-document.getElementById('aboutButton').addEventListener('click', function() {
+/*document.getElementById('aboutButton').addEventListener('click', function() {
     var iframe = document.getElementById('datasetFrame');
     iframe.src = './about.html'; // Adjust the path to your "About" page
     iframe.style.display = 'block'; // Ensure the iframe is visible
     heroSection.style.backgroundImage = 'none';
-});
+});*/
 
 // onload
 window.addEventListener('DOMContentLoaded', function() {
