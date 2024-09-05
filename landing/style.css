@@ -43,7 +43,7 @@ main {
 }
 
 .logo {
-    height: 80px;
+    height: 40px;
     /* Adjust the size as needed */
     width: auto;
     /* This will maintain the aspect ratio */
@@ -70,7 +70,8 @@ main {
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    height: 90vh;
+    /*height: 90vh;*/
+    flex: auto;
     text-align: center;
     /* background-color: #282626; */
     color: #ffffff;
@@ -82,6 +83,7 @@ main {
     z-index: 1;
 }
 
+/*
 .hero::before {
     content: '';
     position: absolute;
@@ -93,7 +95,7 @@ main {
     /* Adjust the color and opacity to your liking */
     z-index: -1;
     /* Ensures the overlay is behind the content */
-}
+}*/
 
 /* Add to your existing style.css */
 /* Dropdown Button */
@@ -263,7 +265,7 @@ button#googleSignIn:hover {
 }
 
 .nav-button {
-    padding: 10px 20px;
+    padding: 5px 10px;
     background-color: transparent;
     /* Makes the background transparent */
     color: #000;

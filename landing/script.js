@@ -36,7 +36,6 @@ let newWindow = null; // This will hold the reference to your new window
     heroSection.style.backgroundImage = 'none';
 });*/
 
-// onload
 window.addEventListener('DOMContentLoaded', function() {
     console.log("DOMContentLoaded")
     var queryString = window.location.search;
