@@ -1,5 +1,7 @@
 # nTracer2
 
+[![DOI](https://zenodo.org/badge/595437348.svg)](https://zenodo.org/doi/10.5281/zenodo.13697098)
+
 ## Startup
 To start nTracer2 with defaults and connect to Cai Lab's demo dataset, run:
 ```
