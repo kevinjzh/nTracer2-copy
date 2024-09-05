@@ -8,19 +8,14 @@
     <script type="text/javascript">
         // Load data
         function loadDataset(url) {
-            // Get the iframe and the hero section
-            var iframe = document.getElementById('datasetFrame');
-
-            // Change the iframe src and make it visible
+            var iframe = document.getElementById('interface');
             iframe.src = url;
-            /*iframe.style.display = 'block';*/
         }
 
         // Toggle nTracer2 window
         let newWindow = null; // This will hold the reference to your new window
 
         window.addEventListener('DOMContentLoaded', function () {
-            console.log("DOMContentLoaded")
             var urlParams = new URLSearchParams(window.location.search);
             var viewer = urlParams.get('viewer');
             var dashboardUrl = urlParams.get('dashboard');
@@ -106,7 +101,7 @@
 <body>
 
     <div id="header">
-        <img src="./img/Spectral_Connectomics_Logo_crop.png" alt="Your Logo" class="logo">
+        <img src="./img/logo.png" alt="Spectral Connectomics Logo; A brain cartoon with a neural network drawn inside." class="logo">
 
         <a id="dashboardButton" class="nav-button" target="_blank">Open Dashboard</a>
     </div>
