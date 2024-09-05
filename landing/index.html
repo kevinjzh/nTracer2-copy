@@ -3,35 +3,116 @@
 
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
     <title>Spectral Connectomics Landing Page</title>
 
-    <link rel="stylesheet" href="style.css">
+    <script type="text/javascript">
+        // Load data
+        function loadDataset(url) {
+            // Get the iframe and the hero section
+            var iframe = document.getElementById('datasetFrame');
+
+            // Change the iframe src and make it visible
+            iframe.src = url;
+            /*iframe.style.display = 'block';*/
+        }
+
+        // Toggle nTracer2 window
+        let newWindow = null; // This will hold the reference to your new window
+
+        window.addEventListener('DOMContentLoaded', function () {
+            console.log("DOMContentLoaded")
+            var urlParams = new URLSearchParams(window.location.search);
+            var viewer = urlParams.get('viewer');
+            var dashboardUrl = urlParams.get('dashboard');
+
+            if (viewer == null || dashboardUrl == null) {
+                console.log("No viewer or dashboard URL provided")
+                return;
+            }
+
+            document.getElementById('dashboardButton').href = dashboardUrl;
+            loadDataset(urlParams.get('viewer'));
+        });
+
+    </script>
+
+    <style type="text/css">
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #EFEDE3;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+
+        }
+
+        #header {
+            background-color: #EFEDE3;
+            color: #fff;
+            padding: 5px 0;
+            flex: none;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+
+        #interface {
+            width: 100%;
+            flex: auto;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            margin-right: 20px;
+        }
+
+
+        .nav-button {
+            padding: 3px 6px;
+            background-color: transparent;
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 18px;
+            text-decoration: none;
+
+        }
+
+        .nav-button:hover {
+            background-color: #000;
+            /* Changes background to black on hover */
+            color: #fff;
+            /* Changes text color to white on hover */
+        }
+    </style>
+
 </head>
 
 <body>
-    <header>
-        <nav>
-            <img src="./img/Spectral_Connectomics_Logo_crop.png" alt="Your Logo" class="logo">
 
-            <a id="dashboardButton" class="nav-button" target="_blank">Open Dashboard</a>
+    <div id="header">
+        <img src="./img/Spectral_Connectomics_Logo_crop.png" alt="Your Logo" class="logo">
 
-            <!--<button id="aboutButton" class="nav-button">About</button>-->
-        </nav>
-    </header>
+        <a id="dashboardButton" class="nav-button" target="_blank">Open Dashboard</a>
+    </div>
 
-    <!--<main>-->
-        <section class="hero" id="heroSection">
-            <!--
-            <h1>Explore the Brain!</h1>
-            <p>Discover by Spectral Connectomics.</p>-->
+    <iframe id="interface"></iframe>
 
-            <iframe id="datasetFrame" style="width:100%; height:100%; display:none;"></iframe>
-        </section>
-    <!--</main>-->
-
-    <script src="script.js"></script>
 </body>
 
 </html>
