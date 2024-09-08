@@ -2,6 +2,18 @@
 
 An interactive tool for reconstructing and analyzing complex neural networks from multi-color fluorescent images.
 
+## Quick Shortcuts
+
+|   Key Combination     |   Command              |
+|-----------------------|------------------------|
+|   Ctrl + right-click  |   Deselect             |
+|   Ctrl + left-click   |   Place Box Selection  |
+|   A                   |   Trace a neurite      |
+|   S                   |   Trace a soma         |
+|   Ctrl + z            |   Undo                 |
+|   Ctrl + y            |   Redo                 |
+|   2 x left-click      |   Select nearest?      |
+
 ## Installing and starting nTracer2
 
 1. Before beginning, ensure that your compute has sufficient RAM and processing power to support nTracer2. We suggest a minimum of 8GB of RAM for a Mac and 16GB for Windows, however your experience may vary. Also ensure that you have a high speed internet connection, as low quality wi-fi is the most common cause of complaint
