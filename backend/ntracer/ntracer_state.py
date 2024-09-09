@@ -24,6 +24,9 @@ class NtracerState:
     cdn_url = urlparse(os.environ["CDN_URL"])
     """Base URL for CDN server"""
 
+    cdn_url_local = urlparse(os.environ["CDN_URL_LOCAL"])
+    """URL used for tracing skeletons"""
+
     cdn_url_dataset = urlparse(posixpath.join(cdn_url.geturl(), dataset_id))
     """CDN URL with dataset appended"""
 
@@ -33,7 +36,8 @@ class NtracerState:
     """CDN URL with dataset and precomputed scheme"""
     
     database_url: str = posixpath.join(
-        cdn_url.geturl(), f"{dataset_id}/skeleton_api"
+        #cdn_url.geturl(), f"{dataset_id}/skeleton_api"
+        cdn_url_local.geturl(), f"{dataset_id}/skeleton_api"
     )
     """URL for database (skeleton API)"""
 
