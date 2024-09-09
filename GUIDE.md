@@ -6,13 +6,14 @@ An interactive tool for reconstructing and analyzing complex neural networks fro
 
 |   Key Combination     |   Command              |
 |-----------------------|------------------------|
-|   Ctrl + right-click  |   Deselect             |
-|   Ctrl + left-click   |   Place Box Selection  |
+|   Ctrl + right-click  |   Deselect current selections.      |
+|   Ctrl + left-click   |   Place selection box.  |
+|   2 x left-click      |   Select nearest point to mouse |
 |   A                   |   Trace a neurite      |
 |   S                   |   Trace a soma         |
 |   Ctrl + z            |   Undo                 |
 |   Ctrl + y            |   Redo                 |
-|   2 x left-click      |   Select nearest?      |
+
 
 ## Installing and starting nTracer2
 
