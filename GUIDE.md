@@ -2,17 +2,29 @@
 
 An interactive tool for reconstructing and analyzing complex neural networks from multi-color fluorescent images.
 
-## Quick Shortcuts
+## Quick Reference
 
-|   Key Combination     |   Command              |
-|-----------------------|------------------------|
+### Hotkey Shortcuts
+
+|   Key Combination     |   Command                           |
+|-----------------------|-------------------------------------|
 |   Ctrl + right-click  |   Deselect current selections.      |
-|   Ctrl + left-click   |   Place selection box.  |
-|   2 x left-click      |   Select nearest point to mouse |
-|   A                   |   Trace a neurite      |
-|   S                   |   Trace a soma         |
-|   Ctrl + z            |   Undo                 |
-|   Ctrl + y            |   Redo                 |
+|   Ctrl + left-click   |   Place selection box.              |
+|   2 x left-click      |   Select nearest point to mouse     |
+|   A                   |   Trace a neurite                   |
+|   S                   |   Trace a soma                      |
+|   Ctrl + z            |   Undo                              |
+|   Ctrl + y            |   Redo                              |
+
+### Docker Parameters
+
+|  ENV Parameter    |    Build Parameter   |     Description       |  Default |
+|-------------------|----------------------|-----------------------|----------|
+| `DATASET_ID` | `dataset_id` | Name of the dataset to operate upon | `packed2` |
+| `NEUROGLANCER_PORT` | `neuroglancer_port`    | Server port used to expose the main nTracer2 UI interface | 8050 | 
+| `SERVER_PORT` and `REACT_APP_SERVER_PORT` | `server_port`          | Port used for backend app communication | 8085 |
+| `CDN_URL`           | `cdn_url` | The URL used to access the CDN | `https://sonic2.cai-lab.org/data/` |
+| `PUBLIC_URL` | `public_url` | App redirect URL | `http://localhost` |
 
 
 ## Installing and starting nTracer2
