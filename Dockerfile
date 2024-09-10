@@ -34,6 +34,7 @@ ARG public_url=http://localhost
 
 ENV CDN_URL=$cdn_url
 ENV CDN_URL_LOCAL=$cdn_url
+ENV CDN_URL_LOCAL_HOST=$cdn_url
 ENV NEUROGLANCER_PORT=$neuroglancer_port
 ENV SERVER_PORT=$server_port
 ENV PUBLIC_URL=$public_url

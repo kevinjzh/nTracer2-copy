@@ -43,7 +43,7 @@ class ImageFunctions:
             )
 
             s.layers["annotate_pre"] = neuroglancer.viewer_state.SegmentationLayer(
-                source=f"{state.precomputed_base.geturl()}/skeleton",
+                source=f"{state.precomputed_cdn_url_local_host.geturl()}/skeleton",
                 skeleton_rendering=neuroglancer.viewer_state.SkeletonRenderingOptions(
                     mode2d="lines", line_width2d=1
                 ),
