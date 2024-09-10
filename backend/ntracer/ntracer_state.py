@@ -22,26 +22,20 @@ class NtracerState:
     dataset_id: str = os.environ["DATASET_ID"]
 
     cdn_url = urlparse(os.environ["CDN_URL"])
-    """Base URL for CDN server"""
+    cdn_url_dataset = urlparse(posixpath.join(cdn_url.geturl(), dataset_id))
+    """Base URL for CDN server used by SERVER"""
+
+    cdn_url_host = urlparse(os.environ["CDN_URL_HOST"])
+    cdn_url_host_dataset = urlparse(posixpath.join(cdn_url_host.geturl(), dataset_id))
+    """URL used to show CDN images to HOST"""
 
     cdn_url_local = urlparse(os.environ["CDN_URL_LOCAL"])
+    cdn_url_local_dataset = urlparse(posixpath.join(cdn_url_local.geturl(), dataset_id))
     """URL used for tracing skeletons, default CDN_URL"""
 
     cdn_url_local_host = urlparse(os.environ["CDN_URL_LOCAL_HOST"])
+    cdn_url_local_host_dataset = urlparse(posixpath.join(cdn_url_local_host.geturl(), dataset_id))
     """URL used for tracing skeleton host access, default CDN_URL"""
-
-    precomputed_cdn_url_local_host = urlparse(posixpath.join(cdn_url_local_host.geturl(), dataset_id))
-    precomputed_cdn_url_local_host = precomputed_cdn_url_local_host._replace(
-        scheme=f'precomputed://{precomputed_cdn_url_local_host.scheme}'
-    )
-
-    cdn_url_dataset = urlparse(posixpath.join(cdn_url.geturl(), dataset_id))
-    """CDN URL with dataset appended"""
-
-    precomputed_base = cdn_url_dataset._replace(
-        scheme=f"precomputed://{cdn_url.scheme}"
-    )
-    """CDN URL with dataset and precomputed scheme"""
     
     database_url: str = posixpath.join(
         #cdn_url.geturl(), f"{dataset_id}/skeleton_api"
