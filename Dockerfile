@@ -58,4 +58,6 @@ WORKDIR /app
 EXPOSE $neuroglancer_port
 EXPOSE $server_port
 
-CMD ["python", "-u", "main.py"]
+RUN chmod +x ./main.py
+
+ENTRYPOINT ["./main.py"]

@@ -15,6 +15,7 @@ An interactive tool for reconstructing and analyzing complex neural networks fro
 |   S                   |   Trace a soma                      |
 |   Ctrl + z            |   Undo                              |
 |   Ctrl + y            |   Redo                              |
+| Alt + Scroll          | Change depth for which traces are shown. | 
 
 ### Docker Parameters
 
