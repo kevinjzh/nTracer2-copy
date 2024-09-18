@@ -2,7 +2,11 @@
 
 [![DOI](https://zenodo.org/badge/595437348.svg)](https://zenodo.org/doi/10.5281/zenodo.13697098)
 
-An interactive tool for reconstructing and analyzing complex neural networks from multi-color fluorescent images.
+An interactive tool for reconstructing and analyzing complex neural networks from multi-color fluorescent images. This software is used in close conjunction with the nTracer2/SISF CDN software: [https://github.com/Cai-Lab-at-University-of-Michigan/SISF_CDN](https://github.com/Cai-Lab-at-University-of-Michigan/SISF_CDN)
+
+## Citation
+
+Pending...
 
 ## Quick Reference
 
