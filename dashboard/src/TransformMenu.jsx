@@ -9,6 +9,9 @@ export default function TransformMenu() {
   const [translateX, setTranslateX] = useState(0)
   const [translateY, setTranslateY] = useState(0)
   const [translateZ, setTranslateZ] = useState(0)
+  const [scaleX, setScaleX] = useState(1)
+  const [scaleY, setScaleY] = useState(1)
+  const [scaleZ, setScaleZ] = useState(1)
 
   useEffect(() => {
     dashboardDispatch({
@@ -22,17 +25,17 @@ export default function TransformMenu() {
     })
   }, [translateX, translateY, translateZ])
 
+
   const getNeuroglancerState = async (port = 8050) => {
     try {
-        const neuroglancerWindow = window.open(`http://localhost:${port}/v/ntracer2/`);
-        console.log(neuroglancerWindow.Viewer.state.toJSON())
-        if (!neuroglancerWindow) {
-          console.error("Could not access Neuroglancer on the specified port.");
-          return;
+        // Check if Neuroglancer is available in the browser
+        if (!window.viewer) {
+            console.error("Neuroglancer viewer is not available in the global scope.");
+            return;
         }
 
         // Get the current state from Neuroglancer
-        const viewerState = JSON.stringify(neuroglancerWindow.Viewer.state.toJSON());
+        const viewerState = JSON.stringify(window.viewer.state.toJSON()); // window.viewer.state is ViewerState (for server.py)
         console.log("Current Neuroglancer State:", viewerState);
         return viewerState;
     } catch (error) {
@@ -81,19 +84,40 @@ export default function TransformMenu() {
           <SliderContainer>
             <Subtitle>X: </Subtitle>
             <Slider type="range" min="-100" max ="100" id="slider" step="1" value={translateX} onChange={(e) => {setTranslateX(parseInt(e.target.value) || 0)}} aria-labelledby='inputX'/>
-            <Input value={translateX} onChange={(e) => {setTranslateX(parseInt(e.target.value) || 0)}} inputProps={{type: 'number', 'aria-labelledby': 'input-slider'}} ></Input>
+            <Input value={translateX} onChange={(e) => {setTranslateX(parseInt(e.target.value) || 0)}} inputProps={{type: 'number', 'aria-labelledby': 'inputX'}} ></Input>
           </SliderContainer>
 
           <SliderContainer>
             <Subtitle>Y: </Subtitle>
             <Slider type="range" min="-100" max ="100" id="slider" step="1" value={translateY} onChange={(e) => {setTranslateY(parseInt(e.target.value) || 0)}} aria-labelledby='inputY'/>
-            <Input value={translateY} onChange={(e) => {setTranslateY(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'input-slider'}} ></Input>
+            <Input value={translateY} onChange={(e) => {setTranslateY(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'inputY'}} ></Input>
           </SliderContainer>
 
           <SliderContainer>
             <Subtitle>Z: </Subtitle>
             <Slider type="range" min="-100" max ="100" id="slider" step="1" value={translateZ} onChange={(e) => {setTranslateZ(parseInt(e.target.value))}} aria-labelledby='inputZ'/>
-            <Input value={translateZ} onChange={(e) => {setTranslateZ(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'input-slider'}} ></Input>
+            <Input value={translateZ} onChange={(e) => {setTranslateZ(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'inputZ'}} ></Input>
+          </SliderContainer>
+        </SettingContainer>
+
+        <SettingContainer>
+          <SubtitleTransform>Scaling in X, Y, or Z axis</SubtitleTransform>
+          <SliderContainer>
+            <Subtitle>X: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" id="slider" step=".01" value={scaleX} onChange={(e) => {setScaleX(parseInt(e.target.value) || 0)}} aria-labelledby='scaleX'/>
+            <Input value={scaleX} onChange={(e) => {setTranslateX(parseInt(e.target.value) || 0)}} inputProps={{type: 'number', 'aria-labelledby': 'scaleX'}} ></Input>
+          </SliderContainer>
+
+          <SliderContainer>
+            <Subtitle>Y: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" id="slider" step=".01" value={scaleY} onChange={(e) => {setScaleY(parseInt(e.target.value) || 0)}} aria-labelledby='scaleY'/>
+            <Input value={scaleY} onChange={(e) => {setTranslateY(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'scaleY'}} ></Input>
+          </SliderContainer>
+
+          <SliderContainer>
+            <Subtitle>Z: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" id="slider" step=".01" value={scaleX} onChange={(e) => {setScaleZ(parseInt(e.target.value))}} aria-labelledby='scaleZ'/>
+            <Input value={scaleZ} onChange={(e) => {setTranslateZ(parseInt(e.target.value))}} inputProps={{type: 'number', 'aria-labelledby': 'scaleZ'}} ></Input>
           </SliderContainer>
         </SettingContainer>
 
@@ -129,8 +153,8 @@ align-items: center;
 `
 
 const Slider = styled.input`
-flex: 1;
-margin-left: 0.5em;
+  flex: 1;
+  margin-left: 0.5em;
 `
 const Input = styled.input`
   height: 20px;
