@@ -3,6 +3,7 @@ import EditMenu from './EditMenu'
 import { ExportMenu } from './ExportMenu';
 import OverlayMenu from './OverlayMenu'
 import TracingMenu from './TracingMenu'
+import TransformMenu from './TransformMenu'
 import {useState} from 'react'
 import styled from 'styled-components/macro'
 
@@ -25,7 +26,11 @@ export default function SideMenu({ deleteNeuron, deleteBranch, deletePoint, subm
             selectedTabMenu = <TracingMenu />
             break;
         case 3:
+            selectedTabMenu = <TransformMenu />
+            break;
+        case 4:
             selectedTabMenu = <ExportMenu />
+            break;
         default:
             break;
     } 
@@ -36,7 +41,8 @@ export default function SideMenu({ deleteNeuron, deleteBranch, deletePoint, subm
                 <TabButton onClick={()=>{setTabIndex(0)}} selected={tabIndex == 0}>Edit</TabButton>
                 <TabButton onClick={()=>{setTabIndex(1)}} selected={tabIndex == 1}>Overlay</TabButton>
                 <TabButton onClick={()=>{setTabIndex(2)}} selected={tabIndex == 2}>Tracing</TabButton>
-                <TabButton onClick={()=>{setTabIndex(3)}} selected={tabIndex == 3}>SWC</TabButton>
+                <TabButton onClick={()=>{setTabIndex(3)}} selected={tabIndex == 3}>Transform</TabButton>
+                <TabButton onClick={()=>{setTabIndex(4)}} selected={tabIndex == 4}>SWC</TabButton>
             </TabButtonContainer>
             <TabContent>
                 {selectedTabMenu}
@@ -48,6 +54,7 @@ export default function SideMenu({ deleteNeuron, deleteBranch, deletePoint, subm
 const TabButtonContainer = styled.div`
 margin-left: 1rem;
 width: 90%;
+display: flex;
 `
 
 const TabButton = styled.button`

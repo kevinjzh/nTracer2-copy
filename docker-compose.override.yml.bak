@@ -1,0 +1,6 @@
+services:
+  ntracer2:
+    volumes:
+      - ./dashboard:/app/dashboard  # Mounts UI files for live reloading
+    environment:
+      - CHOKIDAR_USEPOLLING=true

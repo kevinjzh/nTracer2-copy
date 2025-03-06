@@ -189,7 +189,7 @@ font-size: 30px;
 
 const RightContainer = styled.div`
 display: flex;
-width: 20rem;
+width: 25rem;
 flex-direction: column;
 /* border: 1px solid rgba(0, 0, 0, 0.6); */
 border-radius: 5px;
