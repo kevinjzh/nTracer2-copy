@@ -1,0 +1,17 @@
+# Ensure all text files use LF (Unix) in the repo
+* text=auto
+
+# Force Python and shell scripts to always use LF (Unix)
+*.py text eol=lf
+*.sh text eol=lf
+
+# Keep Windows batch files with CRLF
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# Treat binary files correctly (Git should not convert line endings)
+*.jpg binary
+*.png binary
+*.gif binary
+*.pdf binary
+*.zip binary
