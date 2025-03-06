@@ -14,7 +14,8 @@ from urllib.parse import quote_plus, urlparse
 import posixpath
 
 import neuroglancer.webdriver
-from neuroglancer.viewer_config_state import ConfigState
+from neuroglancer.viewer_config_state import ConfigState, ActionState
+from neuroglancer import Viewer, parse_url, to_url
 from flask import Flask, redirect, request, send_file, send_from_directory
 from flask_socketio import SocketIO
 from ngauge import Neuron
@@ -435,14 +436,17 @@ def static_js_files(filename):
 def static_css_files(filename):
     return send_from_directory("dashboard/build/static/css", filename)
 
-@app.post("/apply_translation")
+@app.post("/v/ntracer2/apply_translation")
 async def apply_translation(request: Request):
     try:
         data = await request.json()
+        print("data from fetch request: ", data)
 
         translateX = float(data["translateX"])
         translateY = float(data["translateY"])
         translateZ = float(data["translateZ"])
+        pretransform_state = data["viewerState"]
+        print(pretransform_state)
 
         transformation_matrix = [
             [1, 0, 0, translateX],
@@ -450,10 +454,29 @@ async def apply_translation(request: Request):
             [0, 0, 1, translateZ],
             [0, 0, 0, 1]
         ]
-
-        print(f"Received translation: X={translateX}, Y={translateY}, Z={translateZ}")
         
-        return {"message": "Translation applied successfully", "matrix": transformation_matrix}
+        #viewer = neuroglancer.Viewer(token=TOKEN)
+        #viewerState = viewer.state
+        #print("ViewerState extracted: ", viewerState)
+        #pretransform_url = neuroglancer.to_url(viewerState, "https://sonic2.cai-lab.org/neuroglancer/")
+        #pretransform_url = viewer.get_viewer_url()
+        #print("Pretransform url: ", pretransform_url)
+        #print("to_json: ", viewer.state.to_json())
+        
+        #json = neuroglancer.to_json_dump(viewerState)
+        #print("JSON: ", json)
+
+        #parsed_url = neuroglancer.parse_url(pretransform_url)
+
+        
+        if 'layers' in pretransform_state:
+            print("if statement")
+            pretransform_state["layers"][0]["source"]["transform"]["matrix"] = transformation_matrix
+        else:
+            print("No layers")
+        
+        neuroglancer.Viewer.set_state = (pretransform_state)
+        return {"message": "Viewer updated successfully"}
 
     except Exception as e:
         print("Error: ", {e})
