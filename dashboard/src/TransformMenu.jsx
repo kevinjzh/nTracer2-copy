@@ -2,6 +2,7 @@ import './App.css';
 import styled from 'styled-components/macro'
 import { DashboardContext } from './DashboardReducer';
 import { useContext, useState, useEffect } from 'react'
+import { BASE_URL } from './App'
 
 export default function TransformMenu() {
   const [dashboardState, dashboardDispatch] = useContext(DashboardContext)
@@ -20,6 +21,33 @@ export default function TransformMenu() {
       }
     })
   }, [translateX, translateY, translateZ])
+
+  const onTransform = async (e) => {
+    e.preventDefault(); // Prevent form reload
+
+    const translationData = {
+        translateX,
+        translateY,
+        translateZ
+    };
+
+    try {
+        const response = await fetch(`${BASE_URL}/apply_translation`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(translationData),
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! Status: ${response.status}`);
+        }
+
+        const data = await response.json();
+        console.log("Server response:", data);
+    } catch (error) {
+        console.error("Error submitting translation:", error);
+    }
+  };
 
   return (
       <TransformContainer>

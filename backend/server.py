@@ -434,3 +434,26 @@ def static_js_files(filename):
 @app.get("/static/css/<path:filename>")
 def static_css_files(filename):
     return send_from_directory("dashboard/build/static/css", filename)
+
+@app.post("/apply_translation")
+async def apply_translation(request: Request):
+    try:
+        data = await request.json()
+
+        translateX = float(data["translateX"])
+        translateY = float(data["translateY"])
+        translateZ = float(data["translateZ"])
+
+        transformation_matrix = [
+            [1, 0, 0, translateX],
+            [0, 1, 0, translateY],
+            [0, 0, 1, translateZ],
+            [0, 0, 0, 1]
+        ]
+
+        print(f"Received translation: X={translateX}, Y={translateY}, Z={translateZ}")
+        
+        return {"message": "Translation applied successfully", "matrix": transformation_matrix}
+
+    except Exception as e:
+        print("Error: ", {e})
