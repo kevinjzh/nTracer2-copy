@@ -140,6 +140,8 @@ async def index() -> RedirectResponse:
         ._replace(netloc=f"{urlparse(os.environ['PUBLIC_URL']).hostname}:{state.neuroglancer_port}")
         .geturl()
     )
+
+    print(viewer_url)
     dashboard_url = quote_plus("/dashboard")
     return RedirectResponse(
         f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
@@ -436,7 +438,7 @@ def static_js_files(filename):
 def static_css_files(filename):
     return send_from_directory("dashboard/build/static/css", filename)
 
-@app.post("/v/ntracer2/apply_translation")
+@app.get("/apply_translation")
 async def apply_translation(request: Request):
     try:
         data = await request.json()
@@ -445,16 +447,15 @@ async def apply_translation(request: Request):
         translateX = float(data["translateX"])
         translateY = float(data["translateY"])
         translateZ = float(data["translateZ"])
-        pretransform_state = data["viewerState"]
-        print(pretransform_state)
 
-        transformation_matrix = [
+        transform_matrix = [
             [1, 0, 0, translateX],
             [0, 1, 0, translateY],
-            [0, 0, 1, translateZ],
-            [0, 0, 0, 1]
+            [0, 0, 1, translateZ]
         ]
         
+        matrix_json = json.dumps(transform_matrix)
+        print("Matrix json: ", matrix_json)
         #viewer = neuroglancer.Viewer(token=TOKEN)
         #viewerState = viewer.state
         #print("ViewerState extracted: ", viewerState)
@@ -469,14 +470,32 @@ async def apply_translation(request: Request):
         #parsed_url = neuroglancer.parse_url(pretransform_url)
 
         
-        if 'layers' in pretransform_state:
-            print("if statement")
-            pretransform_state["layers"][0]["source"]["transform"]["matrix"] = transformation_matrix
-        else:
-            print("No layers")
-        
-        neuroglancer.Viewer.set_state = (pretransform_state)
-        return {"message": "Viewer updated successfully"}
+        # if 'layers' in pretransform_state:
+        #     print("if statement")
+        #     pretransform_state["layers"][0]["source"]["transform"]["matrix"] = transformation_matrix
+        # else:
+        #     print("No layers")
+
+        current_viewer = get_state().viewer
+        print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
+        print("JSON STATEE: ", neuroglancer.to_json_dump(current_viewer.state, indent=4))
+        print("Current viewer: ", current_viewer)
+        print("get_viewer_url: ", current_viewer.get_viewer_url())
+
+        with current_viewer.txn() as s:
+            # Iterate over layers
+            for layer in s.layers:
+                # Check if it's an image layer with a string "source"
+                if layer.type == "image" and isinstance(layer.source, str):
+                    # Convert source to an object with "transform"
+                    layer.source = {
+                        "url": layer.source,  # Keep the same URL
+                        "transform": matrix_json  # Add the new transformation
+                    }
+
+        return RedirectResponse(
+        f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
+    )
 
     except Exception as e:
         print("Error: ", {e})
