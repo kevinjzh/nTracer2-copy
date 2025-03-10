@@ -489,27 +489,18 @@ async def apply_translation(request: Request):
             with current_viewer.txn() as s:
                 for layer in s.layers:
                     if layer.name == "image":
-                        print("Source: ", layer.source)
+                        print("Source: ", layer.source) # Brackets around source? Not originally there
                         dimensions = neuroglancer.CoordinateSpace(
-                            names=["x", "y", "z"], units="m", scales=s.dimensions.scales
+                            names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales
                         )
 
                         layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
                             output_dimensions=dimensions,
                             matrix=transform_matrix
                         )
-
-                        # layer.source[0] = {
-                        #     "url": layer.source[0].url,
-                        #     "transform": transform
-                        #     # "outputDimension": s.displayDimensions
-                        # }
                         print("Layer: ", layer.to_json())
         except Exception as e:
-            print("ERROrR: ", {e})
-
-        transformed_state = neuroglancer.to_url(current_viewer.state)
-        # print("TransformedSDF: ", transformed_state)    
+            print("Error updating matrix: ", {e})
 
     except Exception as e:
         print("ERROR: ", {e})
