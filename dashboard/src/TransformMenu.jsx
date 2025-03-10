@@ -56,13 +56,12 @@ export default function TransformMenu() {
         const response = await fetch(`${BASE_URL}/apply_translation`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(translationData),
+            body: JSON.stringify(translationData)
         });
 
-        if (!response.ok) {
-            throw new Error(`HTTP error: ${response.status}`);
-        }
-        
+
+        console.log("Response: ", response.text())
+        window.location.href = response.text();
 
     } catch (error) {
         console.error("Error submitting translation:", error);

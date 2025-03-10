@@ -438,7 +438,7 @@ def static_js_files(filename):
 def static_css_files(filename):
     return send_from_directory("dashboard/build/static/css", filename)
 
-@app.get("/apply_translation")
+@app.post("/apply_translation")
 async def apply_translation(request: Request):
     try:
         data = await request.json()
@@ -480,22 +480,25 @@ async def apply_translation(request: Request):
         print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
         print("JSON STATEE: ", neuroglancer.to_json_dump(current_viewer.state, indent=4))
         print("Current viewer: ", current_viewer)
-        print("get_viewer_url: ", current_viewer.get_viewer_url())
+        print("Viewstate: ", current_viewer.state)
 
         with current_viewer.txn() as s:
             # Iterate over layers
             for layer in s.layers:
-                # Check if it's an image layer with a string "source"
-                if layer.type == "image" and isinstance(layer.source, str):
-                    # Convert source to an object with "transform"
-                    layer.source = {
-                        "url": layer.source,  # Keep the same URL
-                        "transform": matrix_json  # Add the new transformation
-                    }
+                layer.source = {
+                    "url": layer.source,  # Keep the same URL
+                    "transform": matrix_json,  # Add the new transformation
+                    "outputDimension": s.dimensions.coordinate_arrays
+                }
+                print("Layer srouce", layer.source)
+                print("outputdimension", s.dimensions.coordinate_arrays)
 
-        return RedirectResponse(
-        f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
-    )
+        print("NO URL: ", current_viewer.state)
+        transformed_state = neuroglancer.to_url(current_viewer.state)
+        print("TransformedSDF: ", transformed_state)
+
+        return RedirectResponse(transformed_state)
+    
 
     except Exception as e:
         print("Error: ", {e})
