@@ -59,10 +59,6 @@ export default function TransformMenu() {
             body: JSON.stringify(translationData)
         });
 
-
-        console.log("Response: ", response.text())
-        window.location.href = response.text();
-
     } catch (error) {
         console.error("Error submitting translation:", error);
     }

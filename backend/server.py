@@ -451,11 +451,14 @@ async def apply_translation(request: Request):
         transform_matrix = [
             [1, 0, 0, translateX],
             [0, 1, 0, translateY],
-            [0, 0, 1, translateZ]
+            [0, 0, 1, translateZ],
         ]
         
-        matrix_json = json.dumps(transform_matrix)
-        print("Matrix json: ", matrix_json)
+
+        
+        
+        # matrix_json = json.dumps(transform_matrix)
+
         #viewer = neuroglancer.Viewer(token=TOKEN)
         #viewerState = viewer.state
         #print("ViewerState extracted: ", viewerState)
@@ -482,23 +485,31 @@ async def apply_translation(request: Request):
         print("Current viewer: ", current_viewer)
         print("Viewstate: ", current_viewer.state)
 
-        with current_viewer.txn() as s:
-            # Iterate over layers
-            for layer in s.layers:
-                layer.source = {
-                    "url": layer.source,  # Keep the same URL
-                    "transform": matrix_json,  # Add the new transformation
-                    "outputDimension": s.dimensions.coordinate_arrays
-                }
-                print("Layer srouce", layer.source)
-                print("outputdimension", s.dimensions.coordinate_arrays)
+        try:
+            with current_viewer.txn() as s:
+                for layer in s.layers:
+                    if layer.name == "image":
+                        print("Source: ", layer.source)
+                        dimensions = neuroglancer.CoordinateSpace(
+                            names=["x", "y", "z"], units="m", scales=s.dimensions.scales
+                        )
 
-        print("NO URL: ", current_viewer.state)
+                        layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
+                            output_dimensions=dimensions,
+                            matrix=transform_matrix
+                        )
+
+                        # layer.source[0] = {
+                        #     "url": layer.source[0].url,
+                        #     "transform": transform
+                        #     # "outputDimension": s.displayDimensions
+                        # }
+                        print("Layer: ", layer.to_json())
+        except Exception as e:
+            print("ERROrR: ", {e})
+
         transformed_state = neuroglancer.to_url(current_viewer.state)
-        print("TransformedSDF: ", transformed_state)
-
-        return RedirectResponse(transformed_state)
-    
+        # print("TransformedSDF: ", transformed_state)    
 
     except Exception as e:
-        print("Error: ", {e})
+        print("ERROR: ", {e})
