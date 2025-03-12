@@ -444,15 +444,6 @@ async def apply_translation(request: Request):
         data = await request.json()
         print("data from fetch request: ", data)
 
-        translateX = float(data["translateX"])
-        translateY = float(data["translateY"])
-        translateZ = float(data["translateZ"])
-
-        transform_matrix = [
-            [1, 0, 0, translateX],
-            [0, 1, 0, translateY],
-            [0, 0, 1, translateZ],
-        ]
         
 
         
@@ -481,9 +472,7 @@ async def apply_translation(request: Request):
 
         current_viewer = get_state().viewer
         print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
-        print("JSON STATEE: ", neuroglancer.to_json_dump(current_viewer.state, indent=4))
-        print("Current viewer: ", current_viewer)
-        print("Viewstate: ", current_viewer.state)
+        print(neuroglancer.to_json_dump(current_viewer.state, indent=4))
 
         try:
             with current_viewer.txn() as s:
@@ -496,9 +485,8 @@ async def apply_translation(request: Request):
 
                         layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
                             output_dimensions=dimensions,
-                            matrix=transform_matrix
+                            matrix=data
                         )
-                        print("Layer: ", layer.to_json())
         except Exception as e:
             print("Error updating matrix: ", {e})
 
