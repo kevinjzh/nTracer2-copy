@@ -24,7 +24,7 @@ export default function TransformMenu() {
   const handleMatrixChange = (key, value) => {
     const numValue = 
         typeof value === "boolean" ? value : 
-        value === "-" ? value : // Allow user to type "-"
+        value === "-" ? value :
         value === "" ? "" : parseFloat(value)
 
     const stateUpdaters = {
@@ -103,7 +103,7 @@ export default function TransformMenu() {
       [0, 0, 0, 1]
     ];
 
-    // Multiply matrices in the correct order:
+    // Multiply matrices in the correct order
     let finalMatrix = multiplyMatrices(
         translationMatrix, 
         multiplyMatrices(rotZ, 
@@ -116,7 +116,29 @@ export default function TransformMenu() {
     );
 
     setMatrix(finalMatrix);
-}, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scale, reflectX, reflectY, reflectZ]);
+
+    const sendMatrixToServer = async () => {
+      const data = [
+          [finalMatrix[0][0], finalMatrix[0][1], finalMatrix[0][2], finalMatrix[0][3]],
+          [finalMatrix[1][0], finalMatrix[1][1], finalMatrix[1][2], finalMatrix[1][3]],
+          [finalMatrix[2][0], finalMatrix[2][1], finalMatrix[2][2], finalMatrix[2][3]]
+      ];
+
+      try {
+          await fetch(`${BASE_URL}/apply_translation`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify(data)
+          });
+          console.log("Matrix sent to server:", data);
+      } catch (error) {
+          console.error("Error submitting transform:", error);
+      }
+    };
+
+    sendMatrixToServer();
+    
+  }, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scale, reflectX, reflectY, reflectZ]);
 
   const onReset = () => {
     setTranslateX(0)
@@ -135,29 +157,7 @@ export default function TransformMenu() {
       [0, 1, 0, 0],
       [0, 0, 1, 0]
     ])
-
-    onSubmit()
   }
-
-  const onSubmit = async (e) => {
-    e.preventDefault(); // Prevent form reload
-    const data = [
-      [matrix[0][0], matrix[0][1], matrix[0][2], matrix[0][3]],
-      [matrix[1][0], matrix[1][1], matrix[1][2], matrix[1][3]],
-      [matrix[2][0], matrix[2][1], matrix[2][2], matrix[2][3]]
-    ]
-
-    try {
-        await fetch(`${BASE_URL}/apply_translation`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-        });
-    } catch (error) {
-        console.error("Error submitting transform:", error);
-    }
-  };
-
 
   return (
       <TransformContainer>
@@ -219,11 +219,25 @@ export default function TransformMenu() {
         </SettingContainer>
 
         <SettingContainer>
-          <SubtitleTransform>Rotate in X, Y, or Z-axis</SubtitleTransform>
+          <SubtitleTransform>Rotate about X, Y, or Z-axis in degrees</SubtitleTransform>
           <SliderContainer>
             <Subtitle>X: </Subtitle>
             <Slider type="range" min="-360" max ="360" step="1" value={rotateX} onChange={(e) => {handleMatrixChange("rotateX", e.target.value)}}/>
-            <Input value={`${rotateX}°`} onChange={(e) => {let newValue = e.target.value.replace("°", ""); handleMatrixChange("rotateX", newValue); }} inputProps={{type: 'number', pattern: "-?[0-9]*"}} ></Input>
+            <Input
+              value={`${rotateX}°`} 
+              onChange={(e) => {
+                let newValue = e.target.value.replace("°", "");
+                handleMatrixChange("rotateX", newValue);
+              }}
+              onKeyDown={(e) => {
+                if (e.key === "ArrowUp") {
+                  handleMatrixChange("rotateX", rotateX + 1);
+                } else if (e.key === "ArrowDown") {
+                  handleMatrixChange("rotateX", rotateX - 1);
+                }
+              }}
+              inputProps={{ type: "number", step: "1", pattern: "-?[0-9]*" }} 
+            />
           </SliderContainer>
 
           <SliderContainer>
@@ -249,10 +263,7 @@ export default function TransformMenu() {
         </MatrixContainer>
 
         <ResetButton onClick={onReset}>Reset</ResetButton>
-
-        <form name="import-form">
-          <SubmitInput type="submit" value="Submit" onClick={onSubmit}/>
-        </form>
+        
       </TransformContainer>
   )
 }
@@ -328,7 +339,6 @@ const GridContainer = styled.div`
   width: 60%;
 `;
 
-// Styled grid cell
 const GridCell = styled.div`
   border: 1px solid black;
   display: flex;
@@ -339,4 +349,10 @@ const GridCell = styled.div`
 `;
 
 const ResetButton = styled.button`
+margin-top: 1rem;
+padding: 0.5rem 1rem;
+border: none;
+border-radius: 0.5rem;
+font-size: 0.9rem;
+cursor: pointer;
 `;
