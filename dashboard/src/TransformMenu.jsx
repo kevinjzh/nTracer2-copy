@@ -165,27 +165,28 @@ export default function TransformMenu() {
           <SubtitleTransform>Translate in X, Y, or Z-axis</SubtitleTransform>
           <SliderContainer>
             <Subtitle>X: </Subtitle>
-            <Slider type="range" min="-100" max ="100" step="1" value={translateX} onChange={(e) => {handleMatrixChange("translateX", e.target.value)}} style={{
+            {/* <Slider type="range" min="-100" max ="100" step="1" value={translateX} onChange={(e) => {handleMatrixChange("translateX", e.target.value)}} style={{
     background: `linear-gradient(
       to right, 
       white ${(translateX + 100) / 2}%, 
       blue ${(translateX + 100) / 2}%, 
       blue 100%
     )`
-  }}/>
-            <Input value={translateX} onChange={(e) => {handleMatrixChange("translateX", e.target.value)}} inputProps={{type: 'number', pattern: "-?[0-9]*"}}></Input>
+  }}/> */}
+            <Slider type="range" min="-100" max ="100" step="1" value={translateX} onChange={(e) => {handleMatrixChange("translateX", e.target.value)}}/>
+            <Input value={translateX} onChange={(e) => {handleMatrixChange("translateX", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
           </SliderContainer>
 
           <SliderContainer>
             <Subtitle>Y: </Subtitle>
             <Slider type="range" min="-100" max ="100" step="1" value={translateY} onChange={(e) => {handleMatrixChange("translateY", e.target.value)}}/>
-            <Input value={translateY} onChange={(e) => {handleMatrixChange("translateY", e.target.value)}} inputProps={{type: 'number', pattern: "-?[0-9]*"}}></Input>
+            <Input value={translateY} onChange={(e) => {handleMatrixChange("translateY", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
           </SliderContainer>
 
           <SliderContainer>
             <Subtitle>Z: </Subtitle>
             <Slider type="range" min="-100" max ="100" step="1" value={translateZ} onChange={(e) => {handleMatrixChange("translateZ", e.target.value)}}/>
-            <Input value={translateZ} onChange={(e) => {handleMatrixChange("translateZ", e.target.value)}} inputProps={{type: 'number', pattern: "-?[0-9]*"}}></Input>
+            <Input value={translateZ} onChange={(e) => {handleMatrixChange("translateZ", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
           </SliderContainer>
         </SettingContainer>
 
@@ -194,7 +195,7 @@ export default function TransformMenu() {
           <SliderContainer>
             <Subtitle>C: </Subtitle>
             <Slider type="range" min="0.1" max ="2" step="0.01" value={scale} onChange={(e) => {handleMatrixChange("scale", e.target.value)}}/>
-            <Input value={scale} onChange={(e) => {handleMatrixChange("scale", e.target.value)}} inputProps={{type: 'number', pattern: "-?[0-9]*"}} ></Input>
+            <Input value={scale} onChange={(e) => {handleMatrixChange("scale", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number" step="0.01"></Input>
           </SliderContainer>
         </SettingContainer>
 
@@ -223,10 +224,33 @@ export default function TransformMenu() {
           <SliderContainer>
             <Subtitle>X: </Subtitle>
             <Slider type="range" min="-360" max ="360" step="1" value={rotateX} onChange={(e) => {handleMatrixChange("rotateX", e.target.value)}}/>
-            <Input
-              value={`${rotateX}°`} 
+            <InputContainer>
+              {/* <Input
+                value={`${rotateX}°`}
+                onChange={(e) => {
+                  let newValue = e.target.value.replace("°", "");
+                  handleMatrixChange("rotateX", e.target.value);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "ArrowUp") {
+                    handleMatrixChange("rotateX", rotateX + 1);
+                  } else if (e.key === "ArrowDown") {
+                    handleMatrixChange("rotateX", rotateX - 1);
+                  }
+                }}
+                type="text"
+              /> */}
+              <Input value={rotateX} onChange={(e) => {handleMatrixChange("rotateX", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
+            </InputContainer>
+          </SliderContainer>
+
+          <SliderContainer>
+            <Subtitle>Y: </Subtitle>
+            <Slider type="range" min="-360" max ="360" step="1" value={rotateY} onChange={(e) => {handleMatrixChange("rotateY", e.target.value)}}/>
+            {/* <Input
+              value={{rotateY}}
               onChange={(e) => {
-                let newValue = e.target.value.replace("°", "");
+                let newValue = e.target.value;
                 handleMatrixChange("rotateX", newValue);
               }}
               onKeyDown={(e) => {
@@ -236,37 +260,44 @@ export default function TransformMenu() {
                   handleMatrixChange("rotateX", rotateX - 1);
                 }
               }}
-              inputProps={{ type: "number", step: "1", pattern: "-?[0-9]*" }} 
-            />
-          </SliderContainer>
-
-          <SliderContainer>
-            <Subtitle>Y: </Subtitle>
-            <Slider type="range" min="-360" max ="360" step="1" value={rotateY} onChange={(e) => {handleMatrixChange("rotateY", e.target.value)}}/>
-            <Input value={`${rotateY}°`} onChange={(e) => {let newValue = e.target.value.replace("°", ""); handleMatrixChange("rotateY", newValue); }} inputProps={{type: 'number', pattern: "-?[0-9]*"}} ></Input>
+              type="number"
+            />           */}
+              <Input value={rotateY} onChange={(e) => {handleMatrixChange("rotateY", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
           </SliderContainer>
 
           <SliderContainer>
             <Subtitle>Z: </Subtitle>
             <Slider type="range" min="-360" max ="360" step="1" value={rotateZ} onChange={(e) => {handleMatrixChange("rotateZ", e.target.value)}}/>
-            <Input value={`${rotateZ}°`} onChange={(e) => {let newValue = e.target.value.replace("°", ""); handleMatrixChange("rotateZ", newValue); }} inputProps={{type: 'number', pattern: "-?[0-9]*"}} ></Input>
+            {/* <Input value={`${rotateZ}°`} onChange={(e) => {let newValue = e.target.value.replace("°", ""); handleMatrixChange("rotateZ", newValue); }} inputProps={{type: 'number', pattern: "-?[0-9]*"}} ></Input> */}
+            <Input value={rotateZ} onChange={(e) => {handleMatrixChange("rotateZ", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number"></Input>
           </SliderContainer>
         </SettingContainer>
 
-        <MatrixContainer>
-          <Subtitle>Transformation Matrix</Subtitle>
-          <GridContainer>
-            {matrix.flat().map((value, index) => (
-              <GridCell key={index}>{value}</GridCell>
-            ))}
-          </GridContainer>
-        </MatrixContainer>
+          <MatrixContainer>
+            <Subtitle>Transformation Matrix</Subtitle>
+
+              <GridContainer>
+                {matrix.flat().map((value, index) => (
+                  <GridCell key={index}>
+                    {value % 1 === 0 ? value : value.toFixed(2)}
+                  </GridCell>
+                ))}
+              </GridContainer>
+          </MatrixContainer>
+
 
         <ResetButton onClick={onReset}>Reset</ResetButton>
         
       </TransformContainer>
   )
 }
+
+const InputContainer = styled.div`
+  display: flex;
+  align-items: center;
+  position: relative;
+  width: fit-content;
+`;
 
 const TransformContainer = styled.div`
   width: 100%;
@@ -303,15 +334,6 @@ const Input = styled.input`
   font-size: 1.2em;
   font-weight: bold;
   margin-left: 0.5em;
-`
-
-const SubmitInput = styled.input`
-margin-top: 1rem;
-padding: 0.5rem 1rem;
-border: none;
-border-radius: 0.5rem;
-font-size: 0.9rem;
-cursor: pointer;
 `
 
 const ReflectAxisContainer = styled.div`

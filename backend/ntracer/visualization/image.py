@@ -38,7 +38,7 @@ class ImageFunctions:
 
             s.layers["image"] = neuroglancer.viewer_state.ImageLayer(
                 # source=coords.layer, #need to make this nicer?
-                source=f'precomputed://{state.cdn_url_host_dataset.geturl()}',
+                source=f'precomputed://{state.cdn_url_host_dataset.geturl()}', # default
                 shader=Constants.DEFAULT_SHADER,
             )
 
