@@ -1,11 +1,5 @@
 import './App.css';
-import TopMenu from './TopMenu'
-import SideMenu from './SideMenu'
-import TreePanel from './TreePanel'
-import PointTable from './PointTable'
-import SomaTable from './SomaTable'
-import Status from './Status'
-import {initialDashboardState, DashboardContext, DashboardReducer} from './DashboardReducer'
+import Menu from './Menu'
 import { SocketContext } from './Context'
 import { useEffect, useState, useReducer, useRef } from 'react'
 import styled from 'styled-components/macro'
@@ -13,126 +7,18 @@ import { io } from 'socket.io-client';
 export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`
 
 function App() {
-  const [statusMessage, setStatusMessage] = useState('');
-  const [data, setData] = useState(null);
-  const [pointList, setPointList] = useState([])
-  const [somaList, setSomaList] = useState([])
-  const updating = useRef(false);
-  const [dashboardState, dashboardDispatch] = useReducer(DashboardReducer, initialDashboardState)
 
-  useEffect(() => {
-    const evtSource = new EventSource(`${BASE_URL}/stream/dashboard`);
-    evtSource.addEventListener("state", ({ data }) => {
-      const {dashboard_state, tracing_state, points_state, soma_state} = JSON.parse(data);
-      updating.current = true;
-      
-      dashboardDispatch({
-        type: 'updateAllProperties',
-        payload: {
-          newState: dashboard_state
-        }
-      })
-
-      setData(tracing_state)
-      setPointList(points_state)
-      setSomaList(soma_state)
-    })
-  },[])
-
-  // useEffect(() => {
-  //   if (updating.current) {
-  //     updating.current = false;
-  //     return;
-  //   }
-
-  //   socket.emit('update_viewer_state', dashboardState)
-  // }, [dashboardState])
 
   useEffect(()=>{
-    // socket.on("status_message", (data) => {
-    //   console.log(data)
-    //   setStatusMessage(data)
-    // })
 
-    // socket.on("downloadSWC", ({ data, filename }) => {
-    //   const blob = new Blob([data], { type: 'text/plain' })
-    //   const url = window.URL.createObjectURL(blob)
-    //   const link = document.createElement('a')
-    //   link.setAttribute('href', url)
-    //   link.setAttribute('download', filename)
-    //   link.style.display = 'none'
-    //   document.body.appendChild(link)
-    //   link.click()
-    //   document.body.removeChild(link)
-    // })
   }, [])
-
-  const deleteNeuron = () => {
-    fetch(`${BASE_URL}/neuron/delete`)
-    // socket.emit('deleteNeuron')
-  }
-
-  const deleteBranch = () => {
-    fetch(`${BASE_URL}/branch/delete`)
-    // socket.emit('deleteBranch')
-  }
-
-  const deletePoint = () => {
-    fetch(`${BASE_URL}/point/delete`)
-    // socket.emit('deletePoint')
-  }
-
-  const submitCoordinates = (coordinates) => {
-    // fetch(`${BASE_URL}/neuron/delete`)
-    // socket.emit('move_to_coordinates', coordinates)
-  }
-
-  const completeSoma = () => {
-    fetch(`${BASE_URL}/soma/complete`)
-    // socket.emit('complete_soma')
-  }
   
   return (
-    <DashboardContext.Provider value={[dashboardState, dashboardDispatch]}>
-      <Container className='App'>
-        {/* <TopMenu /> */}
-        <LeftContent>
-          <Header>
-            <HeaderText>nTracer2</HeaderText>
-            <HeaderSmallText>v1.0.0-alpha1</HeaderSmallText>
-          </Header>
-          <MainContainer>
-            <LeftContainer padding={5}>
-              <WhiteContainer flex={1}>
-                {/* <TreeControl>
-                  <TreeControlButton onClick={()=>{}}>+</TreeControlButton>
-                  <TreeControlButton onClick="clearCurrent(this)">clear</TreeControlButton>
-                  <TreeControlButton onClick="fillTree(this)">show</TreeControlButton>
-                  <input type="checkbox" onchange="toggleCheckbox(this)" />
-                  <br />
-                  <br />
-                </TreeControl> */}
-                <Folders>
-                  <TreePanel data={data} />
-                </Folders>
-              </WhiteContainer>
-              <div style={{display: 'flex', overflow: 'scroll', height: '40%', boxShadow: '0px -5px 10px 5px rgba(50, 50, 50, 0.1)' }}>
-                <SomaTable somaList={somaList} />
-                <PointTable pointList={pointList} />
-              </div>
-            </LeftContainer>
-          </MainContainer>
-          {/* <Status statusMessage={statusMessage}/> */}
-        </LeftContent>
-        <RightContainer>
-            <SideMenu deleteNeuron={deleteNeuron}
-                      deleteBranch={deleteBranch}
-                      deletePoint={deletePoint}
-                      submitCoordinates={submitCoordinates}
-                      completeSoma={completeSoma} />
-        </RightContainer>
-      </Container>
-    </DashboardContext.Provider>
+    <Container>
+      <RightContainer>
+          <Menu />
+      </RightContainer>
+    </Container>
   );
 }
 

@@ -477,7 +477,7 @@ async def apply_translation(request: Request):
         try:
             with current_viewer.txn() as s:
                 for layer in s.layers:
-                    if layer.name == "image":
+                    if layer.name == "image" or "segment" or "mesh":
                         print("Source: ", layer.source) # Brackets around source? Not originally there
                         dimensions = neuroglancer.CoordinateSpace(
                             names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales

@@ -26,6 +26,7 @@
             }
 
             loadDataset(urlParams.get('viewer'));
+            document.getElementById('dashboardButton').href = dashboardUrl;
             newWindow = window.open(dashboardUrl, '_blank');
         });
 
@@ -102,7 +103,7 @@
 
     <div id="header">
         <img src="./img/logo.png" alt="Spectral Connectomics Logo; A brain cartoon with a neural network drawn inside." class="logo">
-
+        <a id="dashboardButton" class="nav-button" target="_blank">Open Dashboard</a>
     </div>
 
     <iframe id="interface"></iframe>

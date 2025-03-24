@@ -1,6 +1,5 @@
 import './App.css';
 import styled from 'styled-components/macro'
-import { DashboardContext } from './DashboardReducer';
 import { useContext, useState, useEffect } from 'react'
 import { BASE_URL } from './App'
 
