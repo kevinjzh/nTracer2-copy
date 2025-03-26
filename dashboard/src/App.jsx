@@ -7,14 +7,47 @@ import { io } from 'socket.io-client';
 export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`
 
 function App() {
+  const [data, setData] = useState(null);
 
-
-  useEffect(()=>{
-
-  }, [])
+  useEffect(() => {    
+    const fetchLayers = async () => {
+      try {
+        const response = await fetch(`${BASE_URL}/layers`);
+        const json = await response.json();
+        setData(json);
+      } catch (error) {
+        console.error('Error fetching layers:', error);
+      }
+    };
+  
+    fetchLayers();    
+  }, []);
   
   return (
     <Container>
+      <RightContainer>
+        <h2>Neuroglancer Layers</h2>
+        {data ? (
+          data.map((layer, index) => (
+            <button
+              key={index}
+              onClick={() => console.log(`Clicked layer: ${layer.name}`)}
+              style={{
+                display: 'block',
+                marginBottom: '1rem',
+                padding: '0.75rem 1rem',
+                fontSize: '1rem',
+                cursor: 'pointer',
+              }}
+            >
+              {layer.name} — <em>{layer.type}</em>
+            </button>
+          ))
+        ) : (
+          <p>Loading...</p>
+        )}
+      </RightContainer>
+
       <RightContainer>
           <Menu />
       </RightContainer>

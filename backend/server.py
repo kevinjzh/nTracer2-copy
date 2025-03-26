@@ -147,6 +147,31 @@ async def index() -> RedirectResponse:
         f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
     )
 
+@app.get("/layers")
+def get_layers():
+    try:
+        # Get JSON string, then parse it into a Python dict
+        viewer_state_json = neuroglancer.to_json_dump(get_state().viewer.state, indent=4)
+        viewer_state = json.loads(viewer_state_json)
+
+        layers = viewer_state.get('layers', [])
+        extracted_info = []
+
+        for layer in layers:
+            name = layer.get('name', 'Unnamed')
+            type = layer.get('type', 'Unknown type')
+            extracted_info.append({
+                'name': name,
+                'type': type
+            })
+
+        return extracted_info
+
+    except Exception as e:
+        print("Error retrieving layer info:", e)
+        return {"error": str(e)}
+
+
 def get_dashboard_state():
     return get_state().dashboard_state.get_state_dict()
 
@@ -437,6 +462,12 @@ def static_js_files(filename):
 @app.get("/static/css/<path:filename>")
 def static_css_files(filename):
     return send_from_directory("dashboard/build/static/css", filename)
+
+'''
+@app.get("/state")
+def get_state():
+    return get_dashboard_state()
+'''
 
 @app.post("/apply_translation")
 async def apply_translation(request: Request):

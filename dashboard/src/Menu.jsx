@@ -2,6 +2,7 @@ import './App.css';
 import {useState} from 'react'
 import TransformMenu from './TransformMenu'
 import styled from 'styled-components/macro'
+import { BASE_URL } from './App'
 
 export default function Menu() {
     const [tabIndex, setTabIndex] = useState(0);   
@@ -18,11 +19,11 @@ export default function Menu() {
     return (
         <>
             <TabButtonContainer >
-                <TabButton onClick={()=>{setTabIndex(0)}} selected={tabIndex == 0}>Edit</TabButton>
-                <TabButton onClick={()=>{setTabIndex(1)}} selected={tabIndex == 1}>Overlay</TabButton>
-                <TabButton onClick={()=>{setTabIndex(2)}} selected={tabIndex == 2}>Tracing</TabButton>
-                <TabButton onClick={()=>{setTabIndex(3)}} selected={tabIndex == 3}>Transform</TabButton>
-                <TabButton onClick={()=>{setTabIndex(4)}} selected={tabIndex == 4}>SWC</TabButton>
+                <TabButton onClick={()=>{setTabIndex(0)}} selected={tabIndex == 0}>Transform</TabButton>
+                <TabButton onClick={()=>{setTabIndex(1)}} selected={tabIndex == 1}>Annotations</TabButton>
+                <TabButton onClick={()=>{setTabIndex(2)}} selected={tabIndex == 2}>Processing</TabButton>
+                <TabButton onClick={()=>{setTabIndex(3)}} selected={tabIndex == 3}>Analysis</TabButton>
+                <TabButton onClick={()=>{setTabIndex(4)}} selected={tabIndex == 4}>Plugins</TabButton>
             </TabButtonContainer>
             <TabContent>
                 {selectedTabMenu}
