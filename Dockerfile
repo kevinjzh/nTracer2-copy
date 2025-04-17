@@ -3,7 +3,7 @@ ARG server_port=8085
 FROM python:3.10-slim AS backend-builder
 RUN apt-get update && apt-get install -y --no-install-recommends gcc g++
 RUN pip --no-cache-dir install cython
-RUN pip --no-cache-dir install --user neuroglancer ngauge flask flask-socketio numpy python-dotenv fastapi "uvicorn[standard]" sse-starlette httpx
+RUN pip --no-cache-dir install --user neuroglancer ngauge flask flask-socketio fastapi-socketio numpy python-dotenv fastapi "uvicorn[standard]" sse-starlette httpx
 COPY backend/compile_cython.py /app/compile_cython.py
 COPY backend/algorithm /app/algorithm
 WORKDIR /app
@@ -61,4 +61,4 @@ EXPOSE $server_port
 RUN chmod +x ./main.py
 
 ENV PYTHONUNBUFFERED=1
-ENTRYPOINT ["./main.py"]
+ENTRYPOINT ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8085", "--ws", "auto", "--loop", "uvloop", "--http", "h11", "--log-level", "debug"]

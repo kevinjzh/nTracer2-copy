@@ -16,8 +16,8 @@ import posixpath
 import neuroglancer.webdriver
 from neuroglancer.viewer_config_state import ConfigState, ActionState
 from neuroglancer import Viewer, parse_url, to_url
-from flask import Flask, redirect, request, send_file, send_from_directory
-from flask_socketio import SocketIO
+#from flask import Flask, redirect, request, send_file, send_from_directory
+#from flask_socketio import SocketIO
 from ngauge import Neuron
 from ntracer.helpers import swc_helper
 
@@ -36,9 +36,32 @@ from fastapi.staticfiles import StaticFiles
 
 
 from fastapi import FastAPI, Request, Response
+from fastapi_socketio import SocketManager
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("socketio")
+
 app = FastAPI()
+
+ALLOWED_ORIGINS = [
+    "http://localhost:8085",
+    "http://localhost:3000",  # Frontend server
+    "*",
+]
+
+sio = SocketManager(
+    app=app,
+    mount_location="/socket.io/",
+    cors_allowed_origins=ALLOWED_ORIGINS,
+    async_mode="asgi",
+    ping_timeout=20,
+    ping_interval=25,
+    max_http_buffer_size=1e8,
+    always_connect=True,
+)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -46,6 +69,7 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="static")
 user_id = 0
@@ -56,6 +80,56 @@ def clear_points():
     IndicatorFunctions.clear_points()
     ImageFunctions.image_write()
     NtracerFunctions.set_selected_points()
+
+@sio.on("connect")
+async def connect(sid, environ, auth):
+    logger.info(f"Client connected with sid: {sid}")
+    client_origin = environ.get('HTTP_ORIGIN', 'Unknown origin')
+    logger.info(f"Connection from origin: {client_origin}")
+    
+    try:
+        await sio.emit('connection_established', {
+            "status": "connected",
+            "sid": sid,
+            "origin": client_origin
+        }, to=sid)
+    except Exception as e:
+        logger.error(f"Error in connect handler: {e}")
+
+@sio.on("disconnect")
+async def disconnect(sid):
+    logger.info(f"Client disconnected: {sid}")
+
+async def emit_layers_updated():
+    await sio.emit('layers-updated')
+
+@app.on_event("startup")
+async def start_background_polling():
+    logger.info("Starting background polling task")
+    asyncio.create_task(poll_neuroglancer_state())
+
+previous_layers = None
+
+async def poll_neuroglancer_state():
+    global previous_layers
+    while True:
+        try:
+            # Dump Neuroglancer viewer state
+            state_json = neuroglancer.to_json_dump(get_state().viewer.state)
+            state = json.loads(state_json)
+            current_layers = state.get("layers", [])
+            
+            # If layer config changed, emit socket event
+            if current_layers != previous_layers:
+                previous_layers = current_layers
+                logger.info("Layers changed! Emitting 'layers-updated'")
+                # Use sio.emit directly 
+                await sio.emit('layers-updated')
+        except Exception as e:
+            logger.error(f"Polling error: {e}")
+        
+        await asyncio.sleep(1)  # check every 1 second
+
 
 
 app.mount("/viewer", StaticFiles(directory="landing", html=True), name="viewer")

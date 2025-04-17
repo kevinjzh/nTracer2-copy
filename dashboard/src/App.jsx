@@ -8,48 +8,117 @@ export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`
 
 function App() {
   const [data, setData] = useState(null);
+  const [socketConnected, setSocketConnected] = useState(false);
+  const [connectionError, setConnectionError] = useState(null);
+  const socket = useRef(null);
+  
+  useEffect(() => {
+    console.log(`Initializing Socket.IO connection to ${BASE_URL}`);
+    
+    // Handle socket.IO connection
+    if (!socket.current) {
+      socket.current = io(BASE_URL, {
+        path: '/socket.io/',
+        transports: ['polling'],
+        reconnection: true,
+        reconnectionAttempts: 10,
+        reconnectionDelay: 1000,
+        timeout: 20000,
+        autoConnect: true,
+        // Important: Send proper origin information
+        extraHeaders: {
+          "Origin": window.location.origin
+        },
+        // Use withCredentials for CORS requests
+        withCredentials: true
+      });
+      
+      // Connection event handling
+      socket.current.on('connect', () => {
+        console.log('Socket.IO connected successfully with ID:', socket.current.id);
+        setSocketConnected(true);
+        setConnectionError(null);
+      });
+      
+      socket.current.on('connection_established', (data) => {
+        console.log('Server confirmed connection:', data);
+      });
+      
+      socket.current.on('connect_error', (error) => {
+        console.error('Socket.IO connection error:', error);
+        setSocketConnected(false);
+        setConnectionError(`Connection error: ${error.message}`);
+      });
 
-  useEffect(() => {    
+      socket.current.on('disconnect', (reason) => {
+        console.log('Socket disconnected:', reason);
+        setSocketConnected(false);
+        setConnectionError(`Disconnected: ${reason}`);
+      });
+    }
+    
     const fetchLayers = async () => {
       try {
-        const response = await fetch(`${BASE_URL}/layers`);
+        console.log('Fetching layers from:', `${BASE_URL}/layers`);
+        const response = await fetch(`${BASE_URL}/layers`, {
+          // Add CORS headers to regular fetch requests too
+          credentials: 'include',
+          headers: {
+            'Accept': 'application/json',
+            'Origin': window.location.origin
+          }
+        });
         const json = await response.json();
+        console.log('Layers received:', json);
         setData(json);
       } catch (error) {
         console.error('Error fetching layers:', error);
       }
     };
-  
-    fetchLayers();    
+    
+    fetchLayers();
+    
+    // Event listener for layer updates
+    if (socket.current) {
+      socket.current.on('layers-updated', () => {
+        console.log('Received layers-updated event!');
+        fetchLayers();
+      });
+    }
+    
+    return () => {
+      if (socket.current) {
+        socket.current.off('layers-updated');
+        socket.current.off('connect');
+        socket.current.off('disconnect');
+        socket.current.off('connect_error');
+        socket.current.off('connection_established');
+      }
+    };
   }, []);
   
   return (
     <Container>
       <RightContainer>
-        <h2>Neuroglancer Layers</h2>
+        <PanelHeader>Neuroglancer Layers</PanelHeader>
         {data ? (
-          data.map((layer, index) => (
-            <button
-              key={index}
-              onClick={() => console.log(`Clicked layer: ${layer.name}`)}
-              style={{
-                display: 'block',
-                marginBottom: '1rem',
-                padding: '0.75rem 1rem',
-                fontSize: '1rem',
-                cursor: 'pointer',
-              }}
-            >
-              {layer.name} — <em>{layer.type}</em>
-            </button>
-          ))
+          data
+            .map((layer, index) => (
+              <LayerButton
+                key={index}
+                onClick={() => console.log(`Clicked layer: ${layer.name}`)}
+              >
+                <span>{layer.name}</span>
+                <em>{layer.type}</em>
+              </LayerButton>
+            ))
         ) : (
-          <p>Loading...</p>
+          <LoadingText>Loading...</LoadingText>
         )}
       </RightContainer>
 
       <RightContainer>
-          <Menu />
+        <Menu />
       </RightContainer>
     </Container>
   );
@@ -114,9 +183,18 @@ flex-direction: column;
 border-radius: 5px;
 font-size: 30px;
 padding: 2rem 1rem 1rem 1rem;
-box-shadow: -5px 0px 10px 5px rgba(0,0,0,0.1);
+/* box-shadow: -5px 0px 10px 5px rgba(0,0,0,0.1); */
 z-index: 999;
 `
+
+const PanelHeader = styled.h3`
+  margin-bottom: 1.5rem;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #333;
+  border-bottom: 1px solid #ddd;
+  padding-bottom: 0.5rem;
+`;
 
 const WhiteContainer = styled.div`
 display: flex;
@@ -155,5 +233,34 @@ flex-shrink: 1;
 background-color: #ffffff;
 overflow: auto;
 `
+const LayerButton = styled.button`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background-color: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  padding: 0.75rem 1rem;
+  font-size: 1rem;
+  margin-bottom: 1rem;
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+  }
+
+  em {
+    font-size: 0.9rem;
+    color: #666;
+  }
+`;
+
+const LoadingText = styled.p`
+  font-size: 1rem;
+  color: #888;
+  font-style: italic;
+`;
 
 export default App;
