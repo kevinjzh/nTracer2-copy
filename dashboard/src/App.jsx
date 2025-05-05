@@ -11,6 +11,18 @@ function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const socket = useRef(null);
+  const [activeLayer, setActiveLayer] = useState(null);
+  const [layerOps, setLayerOps] = useState({});
+
+  const updateLayerOp = (layerName, newOp) => {
+    setLayerOps(prev => ({
+      ...prev,
+      [layerName]: {
+        ...(prev[layerName] || {}),
+        ...newOp
+      }
+    }));
+  };
   
   useEffect(() => {
     console.log(`Initializing Socket.IO connection to ${BASE_URL}`);
@@ -94,19 +106,38 @@ function App() {
         socket.current.off('connect_error');
         socket.current.off('connection_established');
       }
-    };
+    };   
   }, []);
   
+  useEffect(() => {
+    if (activeLayer && !layerOps[activeLayer.name]) {
+      updateLayerOp(activeLayer.name, {
+        transform: null,
+      });
+    }
+  }, [activeLayer]);
+
   return (
     <Container>
       <RightContainer>
         <PanelHeader>Neuroglancer Layers</PanelHeader>
+        <HeaderRow>
+          <h2>Name</h2>
+          <span>Layer Type</span>
+        </HeaderRow>
         {data ? (
           data
             .map((layer, index) => (
               <LayerButton
                 key={index}
-                onClick={() => console.log(`Clicked layer: ${layer.name}`)}
+                isActive={activeLayer?.name === layer.name}
+                onClick={() => {
+                  if (activeLayer?.name === layer.name) {
+                    setActiveLayer(null);
+                  } else {
+                    setActiveLayer(layer);
+                  }
+                }}
               >
                 <span>{layer.name}</span>
                 <em>{layer.type}</em>
@@ -233,29 +264,43 @@ flex-shrink: 1;
 background-color: #ffffff;
 overflow: auto;
 `
+const HeaderRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #ccc;
+`;
+
 const LayerButton = styled.button`
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
+  background-color: ${({ isActive }) => (isActive ? '#e6f7ff' : '#fff')};
+  border: 1px solid ${({ isActive }) => (isActive ? '#1890ff' : '#ddd')};
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    background-color: #f0f0f0;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+  }
+
+  span {
+    font-weight: 500;
   }
 
   em {
     font-size: 0.9rem;
     color: #666;
+    font-style: normal;
   }
 `;
+
+
 
 const LoadingText = styled.p`
   font-size: 1rem;

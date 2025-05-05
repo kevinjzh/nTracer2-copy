@@ -3,11 +3,13 @@ import styled from 'styled-components/macro'
 import { useContext, useState, useEffect } from 'react'
 import { BASE_URL } from './App'
 
-export default function TransformMenu() {
+export default function TransformMenu({ activeLayer, updateLayerOp }) {
   const [translateX, setTranslateX] = useState(0)
   const [translateY, setTranslateY] = useState(0)
   const [translateZ, setTranslateZ] = useState(0)
-  const [scale, setScale] = useState(1)
+  const [scaleX, setScaleX] = useState(1)
+  const [scaleY, setScaleY] = useState(1)
+  const [scaleZ, setScaleZ] = useState(1)
   const [reflectX, setReflectX] = useState(0)
   const [reflectY, setReflectY] = useState(0)
   const [reflectZ, setReflectZ] = useState(0)
@@ -33,7 +35,9 @@ export default function TransformMenu() {
       rotateX: setRotateX,
       rotateY: setRotateY,
       rotateZ: setRotateZ,
-      scale: setScale,
+      scaleX: setScaleX,
+      scaleY: setScaleY,
+      scaleZ: setScaleZ,
       reflectX: setReflectX,
       reflectY: setReflectY,
       reflectZ: setReflectZ
@@ -82,9 +86,9 @@ export default function TransformMenu() {
     ];
 
     const scaleMatrix = [
-      [scale, 0, 0, 0],
-      [0, scale, 0, 0],
-      [0, 0, scale, 0],
+      [scaleX, 0, 0, 0],
+      [0, scaleY, 0, 0],
+      [0, 0, scaleZ, 0],
       [0, 0, 0, 1]
     ];
 
@@ -124,7 +128,7 @@ export default function TransformMenu() {
       ];
 
       try {
-          await fetch(`${BASE_URL}/apply_translation`, {
+          await fetch(`${BASE_URL}/transform`, {
               method: "POST",
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data)
@@ -137,7 +141,7 @@ export default function TransformMenu() {
 
     sendMatrixToServer();
     
-  }, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scale, reflectX, reflectY, reflectZ]);
+  }, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scaleX, scaleY, scaleZ, reflectX, reflectY, reflectZ]);
 
   const onReset = () => {
     setTranslateX(0)
@@ -146,7 +150,9 @@ export default function TransformMenu() {
     setRotateX(0)
     setRotateY(0)
     setRotateZ(0)
-    setScale(1)
+    setScaleX(1)
+    setScaleY(1)
+    setScaleZ(1)
     setReflectX(false)
     setReflectY(false)
     setReflectZ(false)
@@ -157,6 +163,40 @@ export default function TransformMenu() {
       [0, 0, 1, 0]
     ])
   }
+
+  const handleSaveTransform = async () => {
+    if (!activeLayer) {
+      alert("No layer selected.");
+      return;
+    }
+  
+    // Save matrix and origin into your per-layer dictionary
+    updateLayerOp(activeLayer.name, {
+      transform: matrix,
+      origin: [translateX, translateY, translateZ]
+    });
+  
+    // Send matrix and origin to your backend
+    try {
+      const response = await fetch(`${BASE_URL}/save_transform`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          layer: activeLayer.name,
+          transform: matrix,
+          origin: [translateX, translateY, translateZ]
+        })
+      });
+  
+      if (!response.ok) throw new Error("Failed to apply transformation");
+  
+      console.log(`Transform saved for layer ${activeLayer.name}`);
+    } catch (error) {
+      console.error("Error saving transform:", error);
+    }
+  };
 
   return (
       <TransformContainer>
@@ -190,11 +230,23 @@ export default function TransformMenu() {
         </SettingContainer>
 
         <SettingContainer>
-          <SubtitleTransform>Scale isotropically</SubtitleTransform>
+          <SubtitleTransform>Scale in X, Y, or Z-axis</SubtitleTransform>
           <SliderContainer>
-            <Subtitle>C: </Subtitle>
-            <Slider type="range" min="0.1" max ="2" step="0.01" value={scale} onChange={(e) => {handleMatrixChange("scale", e.target.value)}}/>
-            <Input value={scale} onChange={(e) => {handleMatrixChange("scale", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number" step="0.01"></Input>
+            <Subtitle>X: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" step="0.01" value={scaleX} onChange={(e) => {handleMatrixChange("scaleX", e.target.value)}}/>
+            <Input value={scaleX} onChange={(e) => {handleMatrixChange("scaleX", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number" step="0.01"></Input>
+          </SliderContainer>
+
+          <SliderContainer>
+            <Subtitle>Y: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" step="0.01" value={scaleY} onChange={(e) => {handleMatrixChange("scaleY", e.target.value)}}/>
+            <Input value={scaleY} onChange={(e) => {handleMatrixChange("scaleY", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number" step="0.01"></Input>
+          </SliderContainer>
+
+          <SliderContainer>
+            <Subtitle>Z: </Subtitle>
+            <Slider type="range" min="0.1" max ="2" step="0.01" value={scaleZ} onChange={(e) => {handleMatrixChange("scaleZ", e.target.value)}}/>
+            <Input value={scaleZ} onChange={(e) => {handleMatrixChange("scaleZ", e.target.value)}} inputProps={{ pattern: "-?[0-9]*"}} type="number" step="0.01"></Input>
           </SliderContainer>
         </SettingContainer>
 
@@ -286,10 +338,17 @@ export default function TransformMenu() {
 
 
         <ResetButton onClick={onReset}>Reset</ResetButton>
+        <SaveButton onClick={handleSaveTransform}>Save Transform</SaveButton>
         
       </TransformContainer>
   )
 }
+
+const SaveButton = styled(ResetButton)`
+  background-color: #4CAF50;
+  color: white;
+  margin-top: 0.5rem;
+`;
 
 const InputContainer = styled.div`
   display: flex;

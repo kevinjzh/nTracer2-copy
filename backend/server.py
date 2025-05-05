@@ -543,7 +543,7 @@ def get_state():
     return get_dashboard_state()
 '''
 
-@app.post("/apply_translation")
+@app.post("/transform")
 async def apply_translation(request: Request):
     try:
         data = await request.json()
@@ -597,3 +597,40 @@ async def apply_translation(request: Request):
 
     except Exception as e:
         print("ERROR: ", {e})
+
+'''
+@app.post("/save_transform")
+async def save_transform(request: Request):
+    try:
+        body = await request.json()
+        layer_name = body.get("layer")
+        transform = body.get("transform")
+        origin = body.get("origin")
+
+        print(f"Received transform for layer {layer_name}")
+        print("Transform matrix:", transform)
+        print("New origin:", origin)
+
+        viewer = get_state().viewer
+
+        with viewer.txn() as s:
+            for layer in s.layers:
+                if layer.name == layer_name:
+                    print(f"Applying transform to layer: {layer.name}")
+                    dimensions = neuroglancer.CoordinateSpace(
+                        names=s.dimensions.names,
+                        units=s.dimensions.units,
+                        scales=s.dimensions.scales
+                    )
+
+                    layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
+                        output_dimensions=dimensions,
+                        matrix=transform
+                    )
+
+        return {"status": "success", "message": f"Transform applied to {layer_name}"}
+
+    except Exception as e:
+        print("Error applying transform:", e)
+        return {"status": "error", "message": str(e)}
+'''
