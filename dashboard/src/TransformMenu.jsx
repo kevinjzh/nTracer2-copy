@@ -3,7 +3,7 @@ import styled from 'styled-components/macro'
 import { useContext, useState, useEffect } from 'react'
 import { BASE_URL } from './App'
 
-export default function TransformMenu() {
+export default function TransformMenu({ saveLayerState, activeLayerName }) {
   const [translateX, setTranslateX] = useState(0)
   const [translateY, setTranslateY] = useState(0)
   const [translateZ, setTranslateZ] = useState(0)
@@ -50,7 +50,6 @@ export default function TransformMenu() {
     );
   };
   
-
   useEffect(() => {
     const radX = (rotateX * Math.PI) / 180;
     const radY = (rotateY * Math.PI) / 180;
@@ -129,7 +128,7 @@ export default function TransformMenu() {
               headers: { "Content-Type": "application/json" },
               body: JSON.stringify(data)
           });
-          console.log("Matrix sent to server:", data);
+          // console.log("Matrix sent to server:", data);
       } catch (error) {
           console.error("Error submitting transform:", error);
       }
@@ -157,6 +156,14 @@ export default function TransformMenu() {
       [0, 0, 1, 0]
     ])
   }
+
+  const handleSaveLayerState = () => {
+    if (activeLayerName) {
+        saveLayerState(activeLayerName, matrix);
+    } else {
+        console.error("No layer not selected.");
+    }
+  };
 
   return (
       <TransformContainer>
@@ -286,10 +293,27 @@ export default function TransformMenu() {
 
 
         <ResetButton onClick={onReset}>Reset</ResetButton>
+        <SaveButton onClick={handleSaveLayerState}>Save State</SaveButton>
         
       </TransformContainer>
   )
 }
+
+const SaveButton = styled.button`
+    margin-top: 1rem;
+    padding: 0.5rem 1rem;
+    border: none;
+    border-radius: 0.5rem;
+    font-size: 0.9rem;
+    cursor: pointer;
+    background-color: #007bff; /* Bootstrap primary color */
+    color: white; /* Text color */
+    transition: background-color 0.3s;
+
+    &:hover {
+        background-color: #0056b3; /* Darker shade on hover */
+    }
+`;
 
 const InputContainer = styled.div`
   display: flex;

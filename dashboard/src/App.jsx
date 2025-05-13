@@ -11,6 +11,16 @@ function App() {
   const [socketConnected, setSocketConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const socket = useRef(null);
+  const [activeLayer, setActiveLayer] = useState(null);
+  const [layerOps, setLayerOps] = useState({});
+
+  const saveLayerState = (layerName, matrix) => {
+    setLayerOps((prevLayerOps) => ({
+        ...prevLayerOps,
+        [layerName]: prevLayerOps[layerName] ? [...prevLayerOps[layerName], matrix] : [matrix],
+    }));
+    console.log("Layer state saved:", layerName, matrix);
+  };
   
   useEffect(() => {
     console.log(`Initializing Socket.IO connection to ${BASE_URL}`);
@@ -25,7 +35,6 @@ function App() {
         reconnectionDelay: 1000,
         timeout: 20000,
         autoConnect: true,
-        // Important: Send proper origin information
         extraHeaders: {
           "Origin": window.location.origin
         },
@@ -61,7 +70,6 @@ function App() {
       try {
         console.log('Fetching layers from:', `${BASE_URL}/layers`);
         const response = await fetch(`${BASE_URL}/layers`, {
-          // Add CORS headers to regular fetch requests too
           credentials: 'include',
           headers: {
             'Accept': 'application/json',
@@ -69,10 +77,10 @@ function App() {
           }
         });
         const json = await response.json();
-        console.log('Layers received:', json);
+        //console.log('Layers received:', json);
         setData(json);
       } catch (error) {
-        console.error('Error fetching layers:', error);
+        //console.error('Error fetching layers:', error);
       }
     };
     
@@ -81,7 +89,7 @@ function App() {
     // Event listener for layer updates
     if (socket.current) {
       socket.current.on('layers-updated', () => {
-        console.log('Received layers-updated event!');
+        //console.log('Received updated layers');
         fetchLayers();
       });
     }
@@ -98,31 +106,143 @@ function App() {
   }, []);
   
   return (
-    <Container>
-      <RightContainer>
-        <PanelHeader>Neuroglancer Layers</PanelHeader>
-        {data ? (
-          data
-            .map((layer, index) => (
-              <LayerButton
-                key={index}
-                onClick={() => console.log(`Clicked layer: ${layer.name}`)}
-              >
-                <span>{layer.name}</span>
-                <em>{layer.type}</em>
-              </LayerButton>
-            ))
-        ) : (
-          <LoadingText>Loading...</LoadingText>
-        )}
-      </RightContainer>
+    <Main>
+      <DashboardText>Dashboard</DashboardText>
 
-      <RightContainer>
-        <Menu />
-      </RightContainer>
-    </Container>
+      <Ribbon>
+        <Button>Edit</Button>
+        <Button>Plug-ins</Button>
+        <Button>System1</Button>
+        <Button>System2</Button>
+        <Button>System3</Button>
+      </Ribbon>
+
+      <Container>
+        <RightContainer>
+          <PanelHeader>Neuroglancer Layers</PanelHeader>
+          <HeaderRow>
+            <LayerTitle>Name</LayerTitle>
+            <LayerTitle>Layer Type</LayerTitle>
+          </HeaderRow>
+          <LayerList 
+            data={data} 
+            activeLayer={activeLayer} 
+            setActiveLayer={setActiveLayer} 
+            layerOps={layerOps}
+          />
+        </RightContainer>
+
+        <RightContainer>
+          <Menu
+            saveLayerState={saveLayerState}
+            activeLayerName={activeLayer?.name}
+          />
+        </RightContainer>
+      </Container>
+    </Main>
   );
 }
+
+const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
+  return (
+      <div>
+          {data ? (
+              data.map((layer, index) => (
+                  <div key={index}>
+                      <LayerButton
+                          isActive={activeLayer?.name === layer.name}
+                          onClick={() => {
+                              if (activeLayer?.name === layer.name) {
+                                  setActiveLayer(null);
+                              } else {
+                                  setActiveLayer(layer);
+                              }
+                          }}
+                      >
+                          <span>{layer.name}</span>
+                          <em>{layer.type}</em>
+                      </LayerButton>
+                      <DropdownMenu layerName={layer.name} transformations={layerOps[layer.name]} />
+                  </div>
+              ))
+          ) : (
+              <LoadingText>Loading...</LoadingText>
+          )}
+      </div>
+  );
+};
+
+const DropdownMenu = ({ layerName, transformations }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+      <div>
+          <button onClick={() => setIsOpen(!isOpen)}>
+              {isOpen ? 'Hide Transformations' : 'Show Transformations'}
+          </button>
+          {isOpen && (
+              <ul>
+                  {transformations ? (
+                      transformations.map((transformation, index) => (
+                          <li key={index}>{JSON.stringify(transformation)}</li>
+                      ))
+                  ) : (
+                      <li>No transformations saved for {layerName}</li>
+                  )}
+              </ul>
+          )}
+      </div>
+  );
+};
+
+const LayerTitle = styled.span`
+font-size:0.8rem;
+font-weight: bold;
+`
+
+const DashboardText = styled.h1`
+margin-left: 20px;
+`
+
+const Ribbon = styled.div`
+display: flex;
+justify-content: space-around;
+background-color: #f0f0f0;
+padding: 10px;
+border-radius: 5px;
+margin-bottom: 20px;
+`;
+
+const Button = styled.button`
+background-color: ${(props)=>(props.selected) ? 'rgba(0, 0, 0, 0.8)': 'rgba(255, 255, 255, 0.9)'};
+color: ${(props)=>(props.selected) ? 'white': 'rgba(0, 0, 0, 0.9)'};
+float: left;
+outline: none;
+cursor: pointer;
+padding: 0.5rem 0.8rem;
+transition: 0.3s;
+font-size: 12px;
+font-weight: 700;
+border-top: 1px solid rgba(0,0,0,0.6);
+border-bottom: 1px solid rgba(0,0,0,0.6);
+border-left: none;
+border-right: 1px solid rgba(0,0,0,0.6);
+display: block;
+:first-child {
+    border-radius: 5px 0 0 5px;
+    border-left: 1px solid rgba(0,0,0,0.6);
+}
+:last-child {
+    border-radius: 0 5px 5px 0;
+    border-right: 1px solid rgba(0,0,0,0.6);
+}
+width: 25%;
+`
+
+const Main = styled.div`
+display: flex;
+flex-direction: column;
+`
 
 const Container = styled.div`
 display: flex;
@@ -188,12 +308,12 @@ z-index: 999;
 `
 
 const PanelHeader = styled.h3`
-  margin-bottom: 1.5rem;
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #333;
-  border-bottom: 1px solid #ddd;
-  padding-bottom: 0.5rem;
+margin-bottom: 1.5rem;
+font-size: 1.25rem;
+font-weight: 600;
+color: #333;
+border-bottom: 1px solid #ddd;
+padding-bottom: 0.5rem;
 `;
 
 const WhiteContainer = styled.div`
@@ -233,29 +353,45 @@ flex-shrink: 1;
 background-color: #ffffff;
 overflow: auto;
 `
+const HeaderRow = styled.div`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  font-weight: bold;
+  padding: 0.75rem 1rem;
+  border-bottom: 2px solid #ccc;
+`;
+
 const LayerButton = styled.button`
-  display: flex;
-  justify-content: space-between;
+  display: grid;
+  width: 90%;
+  grid-template-columns: 1fr 1fr;
   align-items: center;
-  background-color: #ffffff;
-  border: 1px solid #ddd;
+  background-color: ${({ isActive }) => (isActive ? '#e6f7ff' : '#fff')};
+  border: 1px solid ${({ isActive }) => (isActive ? '#1890ff' : '#ddd')};
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  margin-bottom: 1rem;
+  margin-bottom: 0.5rem;
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
 
   &:hover {
-    background-color: #f0f0f0;
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);
+  }
+
+  span {
+    font-weight: 500;
+    font-size: 0.9rem;
   }
 
   em {
     font-size: 0.9rem;
     color: #666;
+    font-style: normal;
   }
 `;
+
+
 
 const LoadingText = styled.p`
   font-size: 1rem;
