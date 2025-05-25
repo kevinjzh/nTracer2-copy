@@ -3,7 +3,7 @@ import styled from 'styled-components/macro'
 import { useContext, useState, useEffect } from 'react'
 import { BASE_URL } from './App'
 
-export default function TransformMenu({ saveLayerState, activeLayerName }) {
+export default function TransformMenu({ saveLayerState, activeLayerName, layerOps }) {
   const [translateX, setTranslateX] = useState(0)
   const [translateY, setTranslateY] = useState(0)
   const [translateZ, setTranslateZ] = useState(0)
@@ -17,7 +17,8 @@ export default function TransformMenu({ saveLayerState, activeLayerName }) {
   const [matrix, setMatrix] = useState([
     [1, 0, 0, 0],
     [0, 1, 0, 0],
-    [0, 0, 1, 0]
+    [0, 0, 1, 0],
+    [0, 0, 0, 1]
   ]);
 
   const handleMatrixChange = (key, value) => {
@@ -116,26 +117,53 @@ export default function TransformMenu({ saveLayerState, activeLayerName }) {
     setMatrix(finalMatrix);
 
     const sendMatrixToServer = async () => {
-      const data = [
-          [finalMatrix[0][0], finalMatrix[0][1], finalMatrix[0][2], finalMatrix[0][3]],
-          [finalMatrix[1][0], finalMatrix[1][1], finalMatrix[1][2], finalMatrix[1][3]],
-          [finalMatrix[2][0], finalMatrix[2][1], finalMatrix[2][2], finalMatrix[2][3]]
-      ];
+      if (activeLayerName) {
+        let composedMatrix = finalMatrix;
+        console.log("layerOps", layerOps)
+        console.log("layerOps[activeLayerName", layerOps[activeLayerName])
+        if (layerOps[activeLayerName] && layerOps[activeLayerName].length != 0) {
+          let compositeMatrix = [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+          ];
+    
+          for (const prevMatrix of layerOps[activeLayerName]) {
+            compositeMatrix = multiplyMatrices(compositeMatrix, prevMatrix);
+          }
+    
+          composedMatrix = multiplyMatrices(compositeMatrix, finalMatrix);
+        }
+    
+        const data = [
+          [
+            [composedMatrix[0][0], composedMatrix[0][1], composedMatrix[0][2], composedMatrix[0][3]],
+            [composedMatrix[1][0], composedMatrix[1][1], composedMatrix[1][2], composedMatrix[1][3]],
+            [composedMatrix[2][0], composedMatrix[2][1], composedMatrix[2][2], composedMatrix[2][3]],
+          ],
+          activeLayerName
+        ];
+        console.log("Data before sending",data)
 
-      try {
-          await fetch(`${BASE_URL}/apply_translation`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify(data)
-          });
-          // console.log("Matrix sent to server:", data);
-      } catch (error) {
-          console.error("Error submitting transform:", error);
+        try {
+            await fetch(`${BASE_URL}/apply_translation`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+            console.log("Matrix sent to server:", data);
+        } catch (error) {
+            console.error("Error submitting transform:", error);
+        }
+      }
+
+      else {
+        console.log("No layer selected")
       }
     };
 
     sendMatrixToServer();
-    
   }, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scale, reflectX, reflectY, reflectZ]);
 
   const onReset = () => {
@@ -153,13 +181,33 @@ export default function TransformMenu({ saveLayerState, activeLayerName }) {
     setMatrix([
       [1, 0, 0, 0],
       [0, 1, 0, 0],
-      [0, 0, 1, 0]
+      [0, 0, 1, 0],
+      [0, 0, 0, 1]
     ])
   }
 
   const handleSaveLayerState = () => {
     if (activeLayerName) {
         saveLayerState(activeLayerName, matrix);
+        
+        /*
+        const updateOrigin = async () => {
+          data = [activeLayerName, matrix] // Keep 4x4 matrix for matrix multi. in server.py
+          try {
+            await fetch(`${BASE_URL}/update_origin`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(data)
+            });
+          } catch (error) {
+              console.error("Error sending matrix for origin update: ", error);
+          }
+        };
+        
+
+        updateOrigin()
+        */
+
     } else {
         console.error("No layer not selected.");
     }

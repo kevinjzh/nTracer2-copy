@@ -4,12 +4,12 @@ import TransformMenu from './TransformMenu'
 import styled from 'styled-components/macro'
 import { BASE_URL } from './App'
 
-export default function Menu({ saveLayerState, activeLayerName }) {
+export default function Menu({ saveLayerState, activeLayerName, layerOps }) {
     const [tabIndex, setTabIndex] = useState(0);   
     let selectedTabMenu;
     switch (tabIndex) {
         case 0:
-            selectedTabMenu = <TransformMenu saveLayerState={saveLayerState} activeLayerName={activeLayerName} />;
+            selectedTabMenu = <TransformMenu saveLayerState={saveLayerState} activeLayerName={activeLayerName} layerOps={layerOps} />;
             break;
 
         default:

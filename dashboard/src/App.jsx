@@ -136,6 +136,7 @@ function App() {
           <Menu
             saveLayerState={saveLayerState}
             activeLayerName={activeLayer?.name}
+            layerOps={layerOps}
           />
         </RightContainer>
       </Container>

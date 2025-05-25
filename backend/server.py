@@ -215,7 +215,7 @@ async def index() -> RedirectResponse:
         .geturl()
     )
 
-    print(viewer_url)
+    # print(viewer_url)
     dashboard_url = quote_plus("/dashboard")
     return RedirectResponse(
         f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
@@ -543,11 +543,29 @@ def get_state():
     return get_dashboard_state()
 '''
 
+'''
+@app.post("/update_origin")
+async def update_origin(request: Request):
+    current_viewer = get_state().viewer
+    try:
+        layerName, matrix = await request.json()
+        with current_viewer.txn() as s:
+                for layer in s.layers:
+                    if layer.name == layerName:
+                        oldOrigin = layer.
+    except Exception as e:
+        print("Error updating origin: ", e)
+'''
+
+
+
 @app.post("/apply_translation")
 async def apply_translation(request: Request):
     try:
-        data = await request.json()
-        print("data from fetch request: ", data)
+        m, layerName = await request.json()
+        
+
+        # print("data from fetch request: ", data)
 
         
 
@@ -576,22 +594,23 @@ async def apply_translation(request: Request):
         #     print("No layers")
 
         current_viewer = get_state().viewer
-        print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
-        print(neuroglancer.to_json_dump(current_viewer.state, indent=4))
+        # print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
+        print("State: ", neuroglancer.to_json_dump(current_viewer.state, indent=4), "END STATE")
 
         try:
             with current_viewer.txn() as s:
                 for layer in s.layers:
-                    if layer.name == "image" or "segment" or "mesh":
-                        print("Source: ", layer.source) # Brackets around source? Not originally there
+                    if layer.name == layerName:
+                        # print("Source: ", layer.source) # Brackets around source? Not originally there
                         dimensions = neuroglancer.CoordinateSpace(
                             names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales
                         )
 
                         layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
                             output_dimensions=dimensions,
-                            matrix=data
+                            matrix=m
                         )
+            print("Current viewer: ", current_viewer, "END VIEWER")
         except Exception as e:
             print("Error updating matrix: ", {e})
 
