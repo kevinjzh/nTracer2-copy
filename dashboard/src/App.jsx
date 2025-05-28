@@ -196,6 +196,13 @@ const DropdownMenu = ({ layerName, transformations }) => {
   );
 };
 
+const Main = styled.div`
+display: flex;
+flex-direction: column;
+height: 100vh;
+overflow: auto;
+`
+
 const LayerTitle = styled.span`
 font-size:0.8rem;
 font-weight: bold;
@@ -240,14 +247,8 @@ display: block;
 width: 25%;
 `
 
-const Main = styled.div`
-display: flex;
-flex-direction: column;
-`
-
 const Container = styled.div`
 display: flex;
-overflow: hidden;
 width: 100vw;
 height: 100vh;
 `
