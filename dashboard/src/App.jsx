@@ -7,7 +7,7 @@ import { io } from 'socket.io-client';
 export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`
 
 function App() {
-  const [data, setData] = useState(null);
+  const [data, setData] = useState(null); //Data is name, type
   const [socketConnected, setSocketConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const socket = useRef(null);
@@ -24,8 +24,7 @@ function App() {
   
   useEffect(() => {
     console.log(`Initializing Socket.IO connection to ${BASE_URL}`);
-    
-    // Handle socket.IO connection
+  
     if (!socket.current) {
       socket.current = io(BASE_URL, {
         path: '/socket.io/',
@@ -38,34 +37,32 @@ function App() {
         extraHeaders: {
           "Origin": window.location.origin
         },
-        // Use withCredentials for CORS requests
         withCredentials: true
       });
-      
-      // Connection event handling
+  
       socket.current.on('connect', () => {
         console.log('Socket.IO connected successfully with ID:', socket.current.id);
         setSocketConnected(true);
         setConnectionError(null);
       });
-      
+  
       socket.current.on('connection_established', (data) => {
         console.log('Server confirmed connection:', data);
       });
-      
+  
       socket.current.on('connect_error', (error) => {
         console.error('Socket.IO connection error:', error);
         setSocketConnected(false);
         setConnectionError(`Connection error: ${error.message}`);
       });
-
+  
       socket.current.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         setSocketConnected(false);
         setConnectionError(`Disconnected: ${reason}`);
       });
     }
-    
+  
     const fetchLayers = async () => {
       try {
         console.log('Fetching layers from:', `${BASE_URL}/layers`);
@@ -77,23 +74,29 @@ function App() {
           }
         });
         const json = await response.json();
-        //console.log('Layers received:', json);
         setData(json);
       } catch (error) {
-        //console.error('Error fetching layers:', error);
+        console.error('Error fetching layers:', error);
       }
     };
-    
+  
     fetchLayers();
-    
-    // Event listener for layer updates
+  
     if (socket.current) {
-      socket.current.on('layers-updated', () => {
-        //console.log('Received updated layers');
-        fetchLayers();
+      socket.current.on('layers-updated', (updated) => {
+        if (updated?.layers) {
+          //console.log("Received updated layers via socket:", updated.layers);
+          const layerArray = Object.entries(updated.layers).map(([name, info]) => ({
+            name,
+            type: info.type
+          }));
+          setData(layerArray);
+        } else {
+          fetchLayers(); // fallback if backend didn't send full data
+        }
       });
     }
-    
+  
     return () => {
       if (socket.current) {
         socket.current.off('layers-updated');
@@ -104,6 +107,7 @@ function App() {
       }
     };
   }, []);
+  
   
   return (
     <Main>
@@ -145,31 +149,88 @@ function App() {
 }
 
 const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
+  const [toggleStates, setToggleStates] = useState({});
+
+  // Initialize toggle states to visible
+  useEffect(() => {
+    if (data) {
+      setToggleStates((prevStates) => {
+        const updatedStates = { ...prevStates };
+        data.forEach(layer => {
+          if (!(layer.name in updatedStates)) {
+            updatedStates[layer.name] = true;
+          }
+        });
+        return updatedStates;
+      });
+    }
+  }, [data]);
+
+  const handleToggle = async (layerName) => {
+    const newVisible = !toggleStates[layerName]; // flip visibility state
+
+    setToggleStates((prevStates) => ({
+      ...prevStates,
+      [layerName]: newVisible,
+    }));
+
+    try {
+      await fetch(`${BASE_URL}/toggle_visibility`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          layerName,
+          visible: newVisible,
+        }),
+      });
+      console.log(`Set ${layerName} visibility to`, newVisible);
+    } catch (err) {
+      console.error("Error toggling layer visibility:", err);
+    }
+  };
+
   return (
-      <div>
-          {data ? (
-              data.map((layer, index) => (
-                  <div key={index}>
-                      <LayerButton
-                          isActive={activeLayer?.name === layer.name}
-                          onClick={() => {
-                              if (activeLayer?.name === layer.name) {
-                                  setActiveLayer(null);
-                              } else {
-                                  setActiveLayer(layer);
-                              }
-                          }}
-                      >
-                          <span>{layer.name}</span>
-                          <em>{layer.type}</em>
-                      </LayerButton>
-                      <DropdownMenu layerName={layer.name} transformations={layerOps[layer.name]} />
-                  </div>
-              ))
-          ) : (
-              <LoadingText>Loading...</LoadingText>
-          )}
-      </div>
+    <div>
+      {data ? (
+        data.map((layer, index) => (
+          <div key={index}>
+            <button
+              onClick={() => handleToggle(layer.name)}
+              style={{
+                marginRight: '8px',
+                backgroundColor: toggleStates[layer.name] ? 'green' : 'red',
+                color: 'white',
+                border: 'none',
+                borderRadius: '4px',
+                padding: '0.5rem 1rem',
+                cursor: 'pointer',
+              }}
+            >
+              {toggleStates[layer.name] ? 'On' : 'Off'}
+            </button>
+            <LayerButton
+              isActive={activeLayer?.name === layer.name}
+              onClick={() => {
+                if (activeLayer?.name === layer.name) {
+                  setActiveLayer(null);
+                } else {
+                  setActiveLayer(layer);
+                }
+              }}
+            >
+              <span>{layer.name}</span>
+              <em>{layer.type}</em>
+            </LayerButton>
+            <DropdownMenu
+              layerName={layer.name}
+              transformations={layerOps[layer.name]}
+            />
+          </div>
+        ))
+      ) : (
+        <LoadingText>Loading...</LoadingText>
+      )}
+    </div>
   );
 };
 
@@ -365,7 +426,7 @@ const HeaderRow = styled.div`
 
 const LayerButton = styled.button`
   display: grid;
-  width: 90%;
+  width: 100%;
   grid-template-columns: 1fr 1fr;
   align-items: center;
   background-color: ${({ isActive }) => (isActive ? '#e6f7ff' : '#fff')};
@@ -373,9 +434,10 @@ const LayerButton = styled.button`
   border-radius: 6px;
   padding: 0.75rem 1rem;
   font-size: 1rem;
-  margin-bottom: 0.5rem;
+  margin-top: 0.8rem;
   cursor: pointer;
   transition: background-color 0.2s ease, box-shadow 0.2s ease;
+  text-align: left;
 
   &:hover {
     box-shadow: 0 0 0 2px rgba(0, 123, 255, 0.15);

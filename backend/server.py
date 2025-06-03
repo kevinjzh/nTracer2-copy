@@ -14,6 +14,7 @@ from urllib.parse import quote_plus, urlparse
 import posixpath
 
 import neuroglancer.webdriver
+from neuroglancer.viewer_state import ManagedLayer
 from neuroglancer.viewer_config_state import ConfigState, ActionState
 from neuroglancer import Viewer, parse_url, to_url
 #from flask import Flask, redirect, request, send_file, send_from_directory
@@ -103,32 +104,74 @@ async def disconnect(sid):
 async def emit_layers_updated():
     await sio.emit('layers-updated')
 
+SAVED_LAYER_CONFIGS = {}
+
 @app.on_event("startup")
 async def start_background_polling():
-    logger.info("Starting background polling task")
+    global SAVED_LAYER_CONFIGS
+    logger.info("Initializing Neuroglancer viewer and saving initial layer configurations...")
+
+    try:
+        viewer = get_state().viewer
+        # Initialize layers
+        layers = viewer.state.layers
+        for i in range(len(layers)):
+            name = layers[i].name
+            layer_json = json.loads(neuroglancer.to_json_dump(layers[i]))
+            SAVED_LAYER_CONFIGS[name] = layer_json
+
+        logger.info(f"Saved {len(SAVED_LAYER_CONFIGS)} initial layer configurations.")
+    except Exception as e:
+        logger.error(f"Error initializing SAVED_LAYER_CONFIGS: {e}")
+
+    logger.info("Starting background polling task for Neuroglancer viewer state...")
     asyncio.create_task(poll_neuroglancer_state())
 
+logger = logging.getLogger(__name__)
+
 previous_layers = None
+
+def extract_layer_metadata(state):
+    # Return dict of layers
+    layers = state.get("layers", [])
+    result = {}
+
+    for layer in layers:
+        name = layer.get("name")
+        if not name:
+            continue
+        result[name] = {
+            "type": layer.get("type", "unknown"),
+            "source": layer.get("source"),
+            "visible": layer.get("visible", True),
+        }
+
+    return result
 
 async def poll_neuroglancer_state():
     global previous_layers
     while True:
         try:
-            # Dump Neuroglancer viewer state
+            # Get state as json
             state_json = neuroglancer.to_json_dump(get_state().viewer.state)
-            state = json.loads(state_json)
+            
+            # Ensure state_json is a string before parsing
+            if isinstance(state_json, str):
+                state = json.loads(state_json)
+            else:
+                state = state_json  # Already a dictionary
+            
             current_layers = state.get("layers", [])
             
             # If layer config changed, emit socket event
             if current_layers != previous_layers:
                 previous_layers = current_layers
-                logger.info("Layers changed! Emitting 'layers-updated'")
-                # Use sio.emit directly 
+                # logger.info("Emitting 'layers-updated'")
                 await sio.emit('layers-updated')
         except Exception as e:
             logger.error(f"Polling error: {e}")
         
-        await asyncio.sleep(1)  # check every 1 second
+        await asyncio.sleep(1)  # check every second
 
 
 
@@ -224,12 +267,14 @@ async def index() -> RedirectResponse:
 @app.get("/layers")
 def get_layers():
     try:
-        # Get JSON string, then parse it into a Python dict
+        # Get JSON string, then parse into dict
         viewer_state_json = neuroglancer.to_json_dump(get_state().viewer.state, indent=4)
         viewer_state = json.loads(viewer_state_json)
 
         layers = viewer_state.get('layers', [])
         extracted_info = []
+
+        print("Layers: ", extracted_info)
 
         for layer in layers:
             name = layer.get('name', 'Unnamed')
@@ -566,11 +611,6 @@ async def apply_translation(request: Request):
         
 
         # print("data from fetch request: ", data)
-
-        
-
-        
-        
         # matrix_json = json.dumps(transform_matrix)
 
         #viewer = neuroglancer.Viewer(token=TOKEN)
@@ -616,3 +656,45 @@ async def apply_translation(request: Request):
 
     except Exception as e:
         print("ERROR: ", {e})
+
+@app.post("/toggle_visibility")
+async def toggle_visibility(request: Request):
+    payload = await request.json()
+    layer_name = payload.get("layerName")
+    visible = payload.get("visible")
+
+    viewer = get_state().viewer
+    state = viewer.state
+
+    # Save viewer state
+    full_state_json = neuroglancer.to_json_dump(state)
+    full_state_dict = json.loads(full_state_json)
+
+    if visible:
+        # Check if layer exists in saved config
+        if layer_name not in SAVED_LAYER_CONFIGS:
+            return {"status": "error", "message": f"No saved config for layer '{layer_name}'"}
+
+        with viewer.txn() as txn:
+            if layer_name not in [l.name for l in txn.layers]: # Check for duplicates
+                layer_json = SAVED_LAYER_CONFIGS[layer_name]
+                layer_obj = ManagedLayer.from_json(layer_json)
+                txn.layers.append(layer_obj)
+    else:
+        # Save layer config by name and remove from viewer
+        for l in full_state_dict.get("layers", []):
+            if l.get("name") == layer_name:
+                SAVED_LAYER_CONFIGS[layer_name] = l # Saving layer to toggle on later
+                break
+        found = False
+        with viewer.txn() as txn:
+            for i, l in enumerate(txn.layers):
+                if l.name == layer_name:
+                    del txn.layers[i]
+                    found = True
+                    break
+        if not found:
+            logger.warning(f"Layer '{layer_name}' not found during removal.")
+
+
+    return {"status": "success", "visible": visible}
