@@ -114,11 +114,11 @@ function App() {
       <DashboardText>Dashboard</DashboardText>
 
       <Ribbon>
-        <Button>Edit</Button>
-        <Button>Plug-ins</Button>
-        <Button>System1</Button>
-        <Button>System2</Button>
-        <Button>System3</Button>
+        <RibbonButton>Edit</RibbonButton>
+        <RibbonButton>Plug-ins</RibbonButton>
+        <RibbonButton>System1</RibbonButton>
+        <RibbonButton>System2</RibbonButton>
+        <RibbonButton>System3</RibbonButton>
       </Ribbon>
 
       <Container>
@@ -151,23 +151,27 @@ function App() {
 const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
   const [toggleStates, setToggleStates] = useState({});
 
-  // Initialize toggle states to visible
+  // Initialize toggle states from actual visibility data
   useEffect(() => {
     if (data) {
       setToggleStates((prevStates) => {
         const updatedStates = { ...prevStates };
         data.forEach(layer => {
-          if (!(layer.name in updatedStates)) {
-            updatedStates[layer.name] = true;
+          const serverVisible = layer.visible !== false;
+          const prevVisible = prevStates[layer.name];
+  
+          // Only update if the server state changed
+          if (prevVisible !== serverVisible) {
+            updatedStates[layer.name] = serverVisible;
           }
         });
         return updatedStates;
       });
     }
   }, [data]);
-
+  
   const handleToggle = async (layerName) => {
-    const newVisible = !toggleStates[layerName]; // flip visibility state
+    const newVisible = !toggleStates[layerName]; // Flip current state
 
     setToggleStates((prevStates) => ({
       ...prevStates,
@@ -194,20 +198,6 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
       {data ? (
         data.map((layer, index) => (
           <div key={index}>
-            <button
-              onClick={() => handleToggle(layer.name)}
-              style={{
-                marginRight: '8px',
-                backgroundColor: toggleStates[layer.name] ? 'green' : 'red',
-                color: 'white',
-                border: 'none',
-                borderRadius: '4px',
-                padding: '0.5rem 1rem',
-                cursor: 'pointer',
-              }}
-            >
-              {toggleStates[layer.name] ? 'On' : 'Off'}
-            </button>
             <LayerButton
               isActive={activeLayer?.name === layer.name}
               onClick={() => {
@@ -221,6 +211,31 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
               <span>{layer.name}</span>
               <em>{layer.type}</em>
             </LayerButton>
+            
+            <button
+              onClick={() => handleToggle(layer.name)}
+              style={{
+                marginLeft: 'auto',
+                backgroundColor: toggleStates[layer.name] ? '#4CAF50' : '#F44336', // Green for 'On', Red for 'Off'
+                color: 'white',
+                border: 'none',
+                borderRadius: '20px',
+                padding: '0.5rem 1rem',
+                cursor: 'pointer',
+                fontSize: '0.9rem',
+                transition: 'background-color 0.3s, transform 0.2s',
+                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'scale(1.05)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'scale(1)';
+              }}
+            >
+              {toggleStates[layer.name] ? 'On' : 'Off'}
+            </button>
+
             <DropdownMenu
               layerName={layer.name}
               transformations={layerOps[layer.name]}
@@ -239,19 +254,21 @@ const DropdownMenu = ({ layerName, transformations }) => {
 
   return (
       <div>
-          <button onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? 'Hide Transformations' : 'Show Transformations'}
-          </button>
+          <ShowTransformsButton onClick={() => setIsOpen(!isOpen)}>
+              {isOpen ? 'Hide' : 'Show Transforms'}
+          </ShowTransformsButton>
           {isOpen && (
-              <ul>
-                  {transformations ? (
-                      transformations.map((transformation, index) => (
-                          <li key={index}>{JSON.stringify(transformation)}</li>
-                      ))
-                  ) : (
-                      <li>No transformations saved for {layerName}</li>
-                  )}
-              </ul>
+            <ul style={{ listStyleType: 'none', padding: 0, margin: 0, fontSize: '0.8em' }}>
+            {transformations ? (
+              transformations.map((transformation, index) => (
+                <li key={index} style={{ marginBottom: '0.5em' }}>
+                  {JSON.stringify(transformation)}
+                </li>
+              ))
+            ) : (
+              <li style={{ marginBottom: '0.5em' }}>No transformations saved for {layerName}</li>
+            )}
+            </ul>
           )}
       </div>
   );
@@ -274,12 +291,32 @@ margin-left: 20px;
 `
 
 const Ribbon = styled.div`
-display: flex;
-justify-content: space-around;
-background-color: #f0f0f0;
-padding: 10px;
-border-radius: 5px;
-margin-bottom: 20px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  background-color: #f0f0f0;
+  padding: 10px 20px;
+  border-radius: 5px;
+  margin-bottom: 20px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+  max-width: 1000px;
+`;
+
+const RibbonButton = styled.button`
+  background-color: transparent;
+  color: #333;
+  border: none;
+  padding: 10px 15px;
+  margin: 0 5px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.3s, color 0.3s;
+
+  &:hover {
+    background-color: #e0e0e0;
+    color: #000;
+  }
 `;
 
 const Button = styled.button`
@@ -307,6 +344,25 @@ display: block;
 }
 width: 25%;
 `
+
+const ShowTransformsButton = styled.button`
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  border: none;
+  border-radius: 0.5rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+  background-color:rgb(212, 212, 212);
+  transition: background-color 0.3s;
+
+  &:hover {
+    background-color:rgb(200, 200, 200);
+  }
+
+  &:focus {
+    outline: none;
+  }
+`;
 
 const Container = styled.div`
 display: flex;

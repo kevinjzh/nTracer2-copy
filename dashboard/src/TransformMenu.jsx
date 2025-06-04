@@ -319,25 +319,33 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
           </SliderContainer>
         </SettingContainer>
 
-          <MatrixContainer>
-            <Subtitle>Transformation Matrix</Subtitle>
+        <MatrixContainer>
+          <Subtitle>Transformation Matrix</Subtitle>
 
-              <GridContainer>
-                {matrix.flat().map((value, index) => (
-                  <GridCell key={index}>
-                    {value % 1 === 0 ? value : value.toFixed(2)}
-                  </GridCell>
-                ))}
-              </GridContainer>
-          </MatrixContainer>
+            <GridContainer>
+              {matrix.flat().map((value, index) => (
+                <GridCell key={index}>
+                  {value % 1 === 0 ? value : value.toFixed(2)}
+                </GridCell>
+              ))}
+            </GridContainer>
+        </MatrixContainer>
 
-
-        <ResetButton onClick={onReset}>Reset</ResetButton>
-        <SaveButton onClick={handleSaveLayerState}>Save State</SaveButton>
+        <ButtonContainer>
+          <ResetButton onClick={onReset}>Reset</ResetButton>
+          <SaveButton onClick={handleSaveLayerState}>Save State</SaveButton>
+        </ButtonContainer>
+        
         
       </TransformContainer>
   )
 }
+
+const ButtonContainer = styled.div`
+display: flex;
+width: 100%;
+justify-content: space-between;
+`
 
 const SaveButton = styled.button`
     margin-top: 1rem;
@@ -413,8 +421,11 @@ justify-content: stretch;
 `
 
 const MatrixContainer = styled.div`
+display: flex;
 width: calc(100% - 3rem);
-jutify-content: center;
+justify-content: center;
+align-items: center;
+flex-direction: column;
 `
 
 const GridContainer = styled.div`

@@ -16,7 +16,17 @@ import posixpath
 import neuroglancer.webdriver
 from neuroglancer.viewer_state import ManagedLayer
 from neuroglancer.viewer_config_state import ConfigState, ActionState
-from neuroglancer import Viewer, parse_url, to_url
+from neuroglancer import (
+    Viewer,
+    parse_url,
+    to_url,
+    ImageLayer,
+    SegmentationLayer,
+    SingleMeshLayer,
+    AnnotationLayer,
+    PointAnnotationLayer,
+    LocalAnnotationLayer
+)
 #from flask import Flask, redirect, request, send_file, send_from_directory
 #from flask_socketio import SocketIO
 from ngauge import Neuron
@@ -664,37 +674,40 @@ async def toggle_visibility(request: Request):
     visible = payload.get("visible")
 
     viewer = get_state().viewer
-    state = viewer.state
 
-    # Save viewer state
-    full_state_json = neuroglancer.to_json_dump(state)
-    full_state_dict = json.loads(full_state_json)
+    with viewer.txn() as txn:
+        for i, layer in enumerate(txn.layers):
+            if layer.name == layer_name:
+                # Convert to JSON, change fields to None to reconstruct
+                layer_json = json.loads(neuroglancer.to_json_dump(layer))
+                layer_type = layer_json.pop("type", None)
+                layer_json.pop("name", None)
+                layer_json.pop("visible", None)
 
-    if visible:
-        # Check if layer exists in saved config
-        if layer_name not in SAVED_LAYER_CONFIGS:
-            return {"status": "error", "message": f"No saved config for layer '{layer_name}'"}
+                # Reconstruct new layer object
+                if layer_type == "image":
+                    new_layer = ImageLayer(**layer_json) # Python dictionary unpacking, simply the structure of layer_json
+                elif layer_type == "segmentation":
+                    new_layer = SegmentationLayer(**layer_json)
+                elif layer_type == "mesh":
+                    new_layer = SingleMeshLayer(**layer_json)
+                elif layer_type == "annotation":
+                    try:
+                        new_layer = PointAnnotationLayer(**layer_json)
+                    except Exception:
+                        try:
+                            new_layer = LocalAnnotationLayer(**layer_json)
+                        except Exception:
+                            new_layer = AnnotationLayer(**layer_json)
+                else:
+                    raise ValueError(f"Unsupported layer type: {layer_type}")
 
-        with viewer.txn() as txn:
-            if layer_name not in [l.name for l in txn.layers]: # Check for duplicates
-                layer_json = SAVED_LAYER_CONFIGS[layer_name]
-                layer_obj = ManagedLayer.from_json(layer_json)
-                txn.layers.append(layer_obj)
-    else:
-        # Save layer config by name and remove from viewer
-        for l in full_state_dict.get("layers", []):
-            if l.get("name") == layer_name:
-                SAVED_LAYER_CONFIGS[layer_name] = l # Saving layer to toggle on later
+                # Remove old layer by name
+                del txn.layers[layer_name]
+
+                # Re-add new layer with visibility
+                txn.layers[layer_name] = new_layer
+                txn.layers[layer_name].visible = visible
                 break
-        found = False
-        with viewer.txn() as txn:
-            for i, l in enumerate(txn.layers):
-                if l.name == layer_name:
-                    del txn.layers[i]
-                    found = True
-                    break
-        if not found:
-            logger.warning(f"Layer '{layer_name}' not found during removal.")
-
 
     return {"status": "success", "visible": visible}

@@ -8,7 +8,7 @@ export default function Menu({ saveLayerState, activeLayerName, layerOps }) {
     const [tabIndex, setTabIndex] = useState(0);   
     let selectedTabMenu;
     switch (tabIndex) {
-        case 0:
+        case 1:
             selectedTabMenu = <TransformMenu saveLayerState={saveLayerState} activeLayerName={activeLayerName} layerOps={layerOps} />;
             break;
 
@@ -19,11 +19,11 @@ export default function Menu({ saveLayerState, activeLayerName, layerOps }) {
     return (
         <>
             <TabButtonContainer >
-                <TabButton onClick={()=>{setTabIndex(0)}} selected={tabIndex == 0}>Transform</TabButton>
-                <TabButton onClick={()=>{setTabIndex(1)}} selected={tabIndex == 1}>Annotations</TabButton>
+                <TabButton onClick={()=>{setTabIndex(0)}} selected={tabIndex == 0}>Rendering</TabButton>
+                <TabButton onClick={()=>{setTabIndex(1)}} selected={tabIndex == 1}>Transform</TabButton>
                 <TabButton onClick={()=>{setTabIndex(2)}} selected={tabIndex == 2}>Processing</TabButton>
                 <TabButton onClick={()=>{setTabIndex(3)}} selected={tabIndex == 3}>Analysis</TabButton>
-                <TabButton onClick={()=>{setTabIndex(4)}} selected={tabIndex == 4}>Rendering</TabButton>
+                <TabButton onClick={()=>{setTabIndex(4)}} selected={tabIndex == 4}>Annotation</TabButton>
             </TabButtonContainer>
             <TabContent>
                 {selectedTabMenu}
