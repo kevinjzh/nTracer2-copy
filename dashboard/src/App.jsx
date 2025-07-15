@@ -27,67 +27,69 @@ function App() {
       try {
         const contents = e.target.result;
         const jsonData = JSON.parse(contents);
-    
+
         if (importModeRef.current === 'layer') {
-          // ✅ Handle single layer import
+          // ✅ Import a single layer
           if (!jsonData.type) {
             alert("Invalid layer JSON: missing 'type' field.");
             return;
           }
-    
+
           const formData = new FormData();
           formData.append("file", file);
           formData.append("layer_name", file.name.replace(".json", ""));
-    
-          const res = await fetch(`${BASE_URL}/import_layer`, {
+
+          await fetch(`${BASE_URL}/import_layer`, {
             method: "POST",
             body: formData,
           });
-    
-          const result = await res.json();
-          console.log("Layer import success:", result);
-        }
-    
-        else if (importModeRef.current === 'viewer') {
-          // ✅ Handle full viewer state import
+
+          console.log("✅ Layer imported. Now fetching updated viewer_state...");
+
+        } else if (importModeRef.current === 'viewer') {
+          // ✅ Import full viewer state
           if (!jsonData.layers) {
             alert("Invalid viewer state JSON: missing 'layers' field.");
             return;
           }
-    
+
           const formData = new FormData();
           formData.append("file", file);
-    
-          const res = await fetch(`${BASE_URL}/import_viewer`, {
+
+          await fetch(`${BASE_URL}/import_viewer`, {
             method: "POST",
             body: formData,
           });
-    
-          const result = await res.json();
-          console.log("Import success:", result);
-    
-          // ✅ After backend loads state, fetch the updated viewer_state
-          const updatedStateRes = await fetch(`${BASE_URL}/viewer_state`);
-          const updatedStateJson = await updatedStateRes.json();
-    
-          console.log("Pushing updated viewer_state to iframe:", updatedStateJson);
-    
-          // ✅ Push updated state into the Neuroglancer iframe UI
-          const iframe = document.getElementById("interface");
-          iframe?.contentWindow?.postMessage(
-            { "neuroglancer/set-state": updatedStateJson },
+
+          console.log("✅ Viewer state imported. Now fetching updated viewer_state...");
+        }
+
+        // ✅ After ANY import, always fetch the *latest* viewer_state
+        const afterStateRes = await fetch(`${BASE_URL}/viewer_state`);
+        const afterState = await afterStateRes.json();
+
+        // ✅ Always push updated viewer_state to iframe Neuroglancer
+        const iframe = document.getElementById("interface");
+        if (iframe?.contentWindow) {
+          iframe.contentWindow.postMessage(
+            { "neuroglancer/set-state": afterState },
             "*"
           );
+          console.log("📡 Sent updated viewer_state to Neuroglancer iframe:", afterState);
+        } else {
+          console.warn("⚠️ No iframe found, cannot send updated viewer_state!");
         }
-    
+
       } catch (error) {
         alert("Failed to read or upload JSON: " + error.message);
+        console.error("Import error:", error);
       }
     };
-    
 
     reader.readAsText(file);
   };
+
+
 
   const handleImportStateJSON = () => {
     console.log("Triggering file input for layer import");
@@ -142,19 +144,19 @@ function App() {
   const saveTrackTransforms = (layerName, transformDescriptionOrUpdater) => {
     setTrackTransforms((prev) => {
       const current = prev[layerName] || [];
-  
+
       const updated = typeof transformDescriptionOrUpdater === 'function'
         ? transformDescriptionOrUpdater(current)
         : Array.isArray(transformDescriptionOrUpdater)
           ? transformDescriptionOrUpdater
           : [...current, transformDescriptionOrUpdater];
-  
+
       return {
         ...prev,
         [layerName]: updated,
       };
     });
-  };  
+  };
 
   // const saveTrackTransforms = (layerName, transformDescription) => {
   //   setTrackTransforms((prev) => ({
@@ -164,7 +166,7 @@ function App() {
   //       : [...(prev[layerName] || []), transformDescription]
   //   }));
   // };
-  
+
 
   useEffect(() => {
     if (!socket.current) {
@@ -186,6 +188,17 @@ function App() {
         console.log('Socket.IO connected successfully with ID:', socket.current.id);
         setSocketConnected(true);
         setConnectionError(null);
+      });
+
+      socket.current.on('viewer-state-updated', (updatedStateJson) => {
+        console.log("📡 Received live updated viewer_state from backend:", updatedStateJson);
+        const iframe = document.getElementById("interface");
+        if (iframe && iframe.contentWindow) {
+          iframe.contentWindow.postMessage(
+            { "neuroglancer/set-state": updatedStateJson },
+            "*"
+          );
+        }
       });
 
       socket.current.on('connection_established', (data) => {
@@ -257,15 +270,15 @@ function App() {
       console.warn("No iframe found for viewer!");
       return;
     }
-  
+
     let syncInterval = null;
-  
+
     // ✅ Listen for messages from iframe
     const handleMessage = (event) => {
       // 1. Neuroglancer inside iframe tells us it’s ready
       if (event.data?.["neuroglancer-ready"]) {
         console.log("✅ Neuroglancer inside iframe is ready");
-  
+
         // ✅ Start periodic viewer_state sync *only after ready*
         syncInterval = setInterval(async () => {
           try {
@@ -273,7 +286,7 @@ function App() {
             const res = await fetch(`${BASE_URL}/viewer_state`);
             const stateJson = await res.json();
             console.log("Fetched viewer_state:", stateJson);
-  
+
             if (!stateJson.error) {
               iframe.contentWindow?.postMessage(
                 { "neuroglancer/set-state": stateJson },
@@ -286,17 +299,41 @@ function App() {
         }, 2000);
       }
     };
-  
+
     // ✅ Add listener for iframe postMessages
     window.addEventListener("message", handleMessage);
-  
+
     // ✅ Cleanup on unmount
     return () => {
       window.removeEventListener("message", handleMessage);
       if (syncInterval) clearInterval(syncInterval);
     };
   }, []);
+
+  const handleDeleteLayer = async (layerName) => {
+    try {
+      // Call backend to delete
+      await fetch(`${BASE_URL}/delete_layer`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ layerName }),
+      });
   
+      // ✅ Update local UI state
+      setData((prevLayers) => prevLayers.filter((l) => l.name !== layerName));
+  
+      // ✅ Clear active layer if it was deleted
+      if (activeLayer?.name === layerName) {
+        setActiveLayer(null);
+      }
+  
+      console.log(`Layer ${layerName} deleted successfully`);
+    } catch (err) {
+      console.error("Error deleting layer:", err);
+    }
+  };
+  
+
 
   return (
     <SocketContext.Provider value={socket}>
@@ -367,6 +404,7 @@ function App() {
               setActiveLayer={setActiveLayer}
               layerOps={layerOps}
               trackTransforms={trackTransforms}
+              onDeleteLayer={handleDeleteLayer}
             />
           </RightContainer>
 
@@ -414,7 +452,7 @@ const RibbonDropdown = ({ trigger, menuItems }) => {
 };
 
 
-const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransforms }) => {
+const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransforms, onDeleteLayer }) => {
   const [toggleStates, setToggleStates] = useState({});
 
   // Initialize toggle states from actual visibility data
@@ -509,6 +547,30 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransform
                 >
                   {toggleStates[layer.name] ? 'On' : 'Off'}
                 </button>
+
+                <button
+                  onClick={() => onDeleteLayer(layer.name)}
+                  style={{
+                    backgroundColor: "#e53935",
+                    color: "white",
+                    border: "none",
+                    borderRadius: "20px",
+                    padding: "0.5rem 1rem",
+                    cursor: "pointer",
+                    fontSize: "0.9rem",
+                    transition: "background-color 0.3s, transform 0.2s",
+                    boxShadow: "0 4px 8px rgba(0, 0, 0, 0.2)",
+                    marginLeft: "10px"
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = "scale(1.05)";
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = "scale(1)";
+                  }}
+                >
+                  Delete
+                </button>
               </div>
             </div>
           </div>
@@ -529,7 +591,7 @@ const LayerDropdownMenu = ({ layerName, transformDescriptions }) => {
         {isOpen ? 'Hide' : 'Show Transforms'}
       </ShowTransformsButton>
 
-      {isOpen && (
+      {/* {isOpen && (
         transformDescriptions && transformDescriptions.length > 0 ? (
           <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5em', marginTop: '0.5em', fontSize: '0.5em' }}>
             {transformDescriptions.map((desc, index) => (
@@ -543,6 +605,44 @@ const LayerDropdownMenu = ({ layerName, transformDescriptions }) => {
             No transform descriptions saved for {layerName}
           </p>
         )
+      )} */}
+
+      {isOpen && (
+        <div
+          style={{
+            maxHeight: "250px",
+            overflowY: "auto",
+            paddingRight: "0.5em",
+            marginTop: "0.5em"
+          }}
+        >
+          {transformDescriptions && transformDescriptions.length > 0 ? (
+            <ol
+              style={{
+                listStyleType: "decimal",
+                paddingLeft: "1.5em",
+                marginTop: "0.5em",
+                fontSize: "0.5em"
+              }}
+            >
+              {transformDescriptions.map((desc, index) => (
+                <li key={index} style={{ marginBottom: "0.5em" }}>
+                  {desc}
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p
+              style={{
+                marginBottom: "0.3em",
+                paddingLeft: "1.5em",
+                fontSize: "0.5em"
+              }}
+            >
+              No transform descriptions saved for {layerName}
+            </p>
+          )}
+        </div>
       )}
     </div>
   );
@@ -734,13 +834,14 @@ font-size: 30px;
 
 const RightContainer = styled.div`
 display: flex;
-width: 25rem;
+width: 30rem;
 flex-direction: column;
 /* border: 1px solid rgba(0, 0, 0, 0.6); */
 border-radius: 5px;
 font-size: 30px;
 padding: 2rem 1rem 1rem 1rem;
 /* box-shadow: -5px 0px 10px 5px rgba(0,0,0,0.1); */
+overflow-y: auto;
 `
 
 const PanelHeader = styled.h3`

@@ -23,15 +23,14 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
     [0, 0, 1, 0],
     [0, 0, 0, 1]
   ]);
-  const [eachTransformMatrix, setEachTransformMatrix] = useState([ // For setting origin after a transform (undo affect?)
+  const [eachTransformMatrix, setEachTransformMatrix] = useState([
     [1, 0, 0, 0],
     [0, 1, 0, 0],
     [0, 0, 1, 0],
     [0, 0, 0, 1]
   ]);
-  // const [indvidualTransforms, setIndividualTransforms] = useState({})
-
   const [composedMatrices, setComposedMatrices] = useState({});
+  const [displayMatrix, setDisplayMatrix] = useState([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
 
   const socket = useContext(SocketContext);
   const [originCoord, setOriginCoord] = useState(null);
@@ -56,24 +55,18 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
 
   useEffect(() => {
     if (!socket?.current) return;
-
     const handlePositionUpdate = (data) => {
       console.log("Received position:", data.position);
       setOriginCoord(data.position);
     };
-
     socket.current.on('position-updated', handlePositionUpdate);
-
-    return () => {
-      socket.current.off('position-updated', handlePositionUpdate);
-    };
+    return () => socket.current.off('position-updated', handlePositionUpdate);
   }, [socket]);
 
   const handleMatrixChange = (key, value) => {
-    const numValue =
-      typeof value === "boolean" ? value :
-        value === "-" ? value :
-          value === "" ? "" : parseFloat(value)
+    const numValue = typeof value === "boolean" ? value :
+      value === "-" ? value :
+        value === "" ? "" : parseFloat(value)
 
     const stateUpdaters = {
       translateX: setTranslateX,
@@ -98,281 +91,105 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
 
   const updateEachTransformMatrix = (key, value) => {
     let matrix;
-
     switch (key) {
-      case "translateX":
-        matrix = [
-          [1, 0, 0, value],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "translateY":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, 1, 0, value],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "translateZ":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, value],
-          [0, 0, 0, 1],
-        ];
-        break;
-
+      case "translateX": matrix = [[1, 0, 0, value], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "translateY": matrix = [[1, 0, 0, 0], [0, 1, 0, value], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "translateZ": matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, value], [0, 0, 0, 1]]; break;
       case "rotateX": {
         const rad = (value * Math.PI) / 180;
         const cos = Math.cos(rad), sin = Math.sin(rad);
-        matrix = [
-          [1, 0, 0, 0],
-          [0, cos, -sin, 0],
-          [0, sin, cos, 0],
-          [0, 0, 0, 1],
-        ];
+        matrix = [[1, 0, 0, 0], [0, cos, -sin, 0], [0, sin, cos, 0], [0, 0, 0, 1]];
         break;
       }
-
       case "rotateY": {
         const rad = (value * Math.PI) / 180;
         const cos = Math.cos(rad), sin = Math.sin(rad);
-        matrix = [
-          [cos, 0, sin, 0],
-          [0, 1, 0, 0],
-          [-sin, 0, cos, 0],
-          [0, 0, 0, 1],
-        ];
+        matrix = [[cos, 0, sin, 0], [0, 1, 0, 0], [-sin, 0, cos, 0], [0, 0, 0, 1]];
         break;
       }
-
       case "rotateZ": {
         const rad = (value * Math.PI) / 180;
         const cos = Math.cos(rad), sin = Math.sin(rad);
-        matrix = [
-          [cos, -sin, 0, 0],
-          [sin, cos, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
+        matrix = [[cos, -sin, 0, 0], [sin, cos, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
         break;
       }
-
-      case "scaleX":
-        matrix = [
-          [value, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-
-        break;
-
-      case "scaleY":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, value, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "scaleZ":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, value, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "reflectX":
-        matrix = [
-          [value ? -1 : 1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "reflectY":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, value ? -1 : 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      case "reflectZ":
-        matrix = [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, value ? -1 : 1, 0],
-          [0, 0, 0, 1],
-        ];
-        break;
-
-      default:
-        matrix = [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
+      case "scaleX": matrix = [[value, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "scaleY": matrix = [[1, 0, 0, 0], [0, value, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "scaleZ": matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, value, 0], [0, 0, 0, 1]]; break;
+      case "reflectX": matrix = [[value ? -1 : 1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "reflectY": matrix = [[1, 0, 0, 0], [0, value ? -1 : 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; break;
+      case "reflectZ": matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, value ? -1 : 1, 0], [0, 0, 0, 1]]; break;
+      default: matrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
     }
-
     setEachTransformMatrix(matrix);
   };
 
-
-  const multiplyMatrices = (A, B) => {
-    if (!Array.isArray(A) || !Array.isArray(B) || !Array.isArray(B[0])) {
-      console.error("Invalid matrices passed to multiplyMatrices:", A, B);
-      return [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]; // fallback
-    }
-  
-    return A.map((row, i) =>
+  const multiplyMatrices = (A, B) =>
+    A.map((row, i) =>
       B[0].map((_, j) => row.reduce((sum, elm, k) => sum + elm * B[k][j], 0))
     );
-  };  
 
-  const multiplyVectorMatrix = (vec, mat) => {
-    if (!Array.isArray(vec) || vec.length !== 4 || !Array.isArray(mat) || mat.length !== 4) {
-      console.error("Invalid vector or matrix in multiplyVectorMatrix", vec, mat);
-      return [0, 0, 0, 1]; // fallback
-    }
-  
-    return mat[0].map((_, col) =>
-      vec.reduce((sum, val, row) => sum + val * mat[row][col], 0)
-    );
-  };
-  
-  
+  const multiplyVectorMatrix = (vec, mat) =>
+    mat[0].map((_, col) => vec.reduce((sum, val, row) => sum + val * mat[row][col], 0));
+
   useEffect(() => {
     const [oxPretransform, oyPretransform, ozPretransform] = originCoord || [0, 0, 0];
     const vec = [oxPretransform, oyPretransform, ozPretransform, 1];
-    console.log("Previous transform:", eachTransformMatrix) // Use inverse?? FUTURE
     const vecTransformed = multiplyVectorMatrix(vec, eachTransformMatrix);
     const [ox, oy, oz] = vecTransformed.slice(0, 3);
+
     const radX = (rotateX * Math.PI) / 180;
     const radY = (rotateY * Math.PI) / 180;
     const radZ = (rotateZ * Math.PI) / 180;
-
     const cosX = Math.cos(radX), sinX = Math.sin(radX);
     const cosY = Math.cos(radY), sinY = Math.sin(radY);
     const cosZ = Math.cos(radZ), sinZ = Math.sin(radZ);
 
-    const rotX = [
-      [1, 0, 0, 0],
-      [0, cosX, -sinX, oy * (1 - cosX) + oz * sinX],
-      [0, sinX, cosX, oz * (1 - cosX) - oy * sinX],
-      [0, 0, 0, 1]
-    ];
+    const rotX = [[1, 0, 0, 0], [0, cosX, -sinX, oy * (1 - cosX) + oz * sinX], [0, sinX, cosX, oz * (1 - cosX) - oy * sinX], [0, 0, 0, 1]];
+    const rotY = [[cosY, 0, sinY, ox * (1 - cosY) - oz * sinY], [0, 1, 0, 0], [-sinY, 0, cosY, oz * (1 - cosY) + ox * sinY], [0, 0, 0, 1]];
+    const rotZ = [[cosZ, -sinZ, 0, ox * (1 - cosZ) + oy * sinZ], [sinZ, cosZ, 0, oy * (1 - cosZ) - ox * sinZ], [0, 0, 1, 0], [0, 0, 0, 1]];
 
-    const rotY = [
-      [cosY, 0, sinY, ox * (1 - cosY) - oz * sinY],
-      [0, 1, 0, 0],
-      [-sinY, 0, cosY, oz * (1 - cosY) + ox * sinY],
-      [0, 0, 0, 1]
-    ];
+    const scaleMatrix = [[scaleX, 0, 0, ox * (1 - scaleX)], [0, scaleY, 0, oy * (1 - scaleY)], [0, 0, scaleZ, oz * (1 - scaleZ)], [0, 0, 0, 1]];
+    const translationMatrix = [[1, 0, 0, translateX], [0, 1, 0, translateY], [0, 0, 1, translateZ], [0, 0, 0, 1]];
+    const reflectMatrix = [[reflectX ? -1 : 1, 0, 0, reflectX ? 2 * ox : 0], [0, reflectY ? -1 : 1, 0, reflectY ? 2 * oy : 0], [0, 0, reflectZ ? -1 : 1, reflectZ ? 2 * oz : 0], [0, 0, 0, 1]];
 
-    const rotZ = [
-      [cosZ, -sinZ, 0, ox * (1 - cosZ) + oy * sinZ],
-      [sinZ, cosZ, 0, oy * (1 - cosZ) - ox * sinZ],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1]
-    ];
-
-    const scaleMatrix = [
-      [scaleX, 0, 0, ox * (1 - scaleX)],
-      [0, scaleY, 0, oy * (1 - scaleY)],
-      [0, 0, scaleZ, oz * (1 - scaleZ)],
-      [0, 0, 0, 1]
-    ];
-
-    const translationMatrix = [
-      [1, 0, 0, translateX],
-      [0, 1, 0, translateY],
-      [0, 0, 1, translateZ],
-      [0, 0, 0, 1]
-    ];
-
-    const reflectMatrix = [
-      [reflectX ? -1 : 1, 0, 0, reflectX ? 2 * ox : 0],
-      [0, reflectY ? -1 : 1, 0, reflectY ? 2 * oy : 0],
-      [0, 0, reflectZ ? -1 : 1, reflectZ ? 2 * oz : 0],
-      [0, 0, 0, 1]
-    ];
-
-    // Multiply matrices in the correct order
     let finalMatrix = multiplyMatrices(
       translationMatrix,
-      multiplyMatrices(rotZ,
-        multiplyMatrices(rotY,
-          multiplyMatrices(rotX,
-            multiplyMatrices(scaleMatrix, reflectMatrix)
-          )
-        )
-      )
+      multiplyMatrices(rotZ, multiplyMatrices(rotY, multiplyMatrices(rotX, multiplyMatrices(scaleMatrix, reflectMatrix))))
     );
 
     setMatrix(finalMatrix);
 
     const sendMatrixToServer = async () => {
-      if (activeLayerName) {
-        let composedMatrix = finalMatrix;
-        console.log("layerOps", layerOps)
-        console.log("layerOps[activeLayerName", layerOps[activeLayerName])
-        if (layerOps[activeLayerName] && layerOps[activeLayerName].length != 0) {
-          let compositeMatrix = [
-            [1, 0, 0, 0],
-            [0, 1, 0, 0],
-            [0, 0, 1, 0],
-            [0, 0, 0, 1],
-          ];
+      if (!activeLayerName) return;
+      let composedMatrix = finalMatrix;
 
-          for (const prevMatrix of layerOps[activeLayerName]) {
-            compositeMatrix = multiplyMatrices(compositeMatrix, prevMatrix);
-          }
-
-          composedMatrix = multiplyMatrices(compositeMatrix, finalMatrix);
+      if (layerOps[activeLayerName]?.length) {
+        let compositeMatrix = [[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]];
+        for (const prevMatrix of layerOps[activeLayerName]) {
+          compositeMatrix = multiplyMatrices(compositeMatrix, prevMatrix);
         }
-        // Track composed matrices for undo, FUTURE don't put in useEffect because it updates often and saves many when sliding
-        setComposedMatrices((prev) => ({
-          ...prev,
-          [activeLayerName]: [...(prev[activeLayerName] || []), composedMatrix]
-        }));
-
-        const data = [
-          [
-            [composedMatrix[0][0], composedMatrix[0][1], composedMatrix[0][2], composedMatrix[0][3]],
-            [composedMatrix[1][0], composedMatrix[1][1], composedMatrix[1][2], composedMatrix[1][3]],
-            [composedMatrix[2][0], composedMatrix[2][1], composedMatrix[2][2], composedMatrix[2][3]],
-          ],
-          activeLayerName
-        ];
-        console.log("Data before sending", data)
-
-        try {
-          await fetch(`${BASE_URL}/transform`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(data)
-          });
-          console.log("Matrix sent to server:", data);
-        } catch (error) {
-          console.error("Error submitting transform:", error);
-        }
+        composedMatrix = multiplyMatrices(compositeMatrix, finalMatrix);
       }
+      // Weird doubling issue in displayMatrix
+      // setComposedMatrices((prev) => ({
+      //   ...prev,
+      //   [activeLayerName]: [...(prev[activeLayerName] || []), composedMatrix]
+      // }));
 
-      else {
-        console.log("No layer selected")
+      // const data = { matrix: composedMatrix, layerName: activeLayerName };
+
+      const data = { matrix: finalMatrix, layerName: activeLayerName };
+
+      try {
+        await fetch(`${BASE_URL}/transform`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(data)
+        });
+        console.log("Matrix sent to server:", data);
+      } catch (error) {
+        console.error("Error submitting transform:", error);
       }
     };
 
@@ -380,6 +197,15 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
   }, [translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scaleX, scaleY, scaleZ, reflectX, reflectY, reflectZ]);
 
   const onReset = async () => {
+    // Define identity matrix once
+    const identityMatrix = [
+      [1, 0, 0, 0],
+      [0, 1, 0, 0],
+      [0, 0, 1, 0],
+      [0, 0, 0, 1]
+    ];
+  
+    // Batch all local state updates in one synchronous React update
     setTranslateX(0);
     setTranslateY(0);
     setTranslateZ(0);
@@ -392,121 +218,85 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
     setReflectX(false);
     setReflectY(false);
     setReflectZ(false);
-
-    const identityMatrix = [
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1],
-    ];
-
+  
+    // Reset all matrices consistently in one pass
     setMatrix(identityMatrix);
     setEachTransformMatrix(identityMatrix);
-
-    if (activeLayerName) {
-      saveLayerState(activeLayerName, []);
-      saveTrackTransforms(activeLayerName, []);
-
-      const resetData = [
-        [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0]
-        ],
-        activeLayerName
-      ];
-
-      try {
-        await fetch(`${BASE_URL}/transform`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(resetData)
-        });
-        await fetch(`${BASE_URL}/reset_origin`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" }
-        });
-      } catch (error) {
-        console.error("Failed to reset matrix on server:", error);
-      }
-    } else {
+    setDisplayMatrix(identityMatrix);
+  
+    if (!activeLayerName) {
       console.warn("Reset failed: no active layer selected.");
+      return;
+    }
+  
+    // Reset layer-related states BEFORE making async calls
+    saveLayerState(activeLayerName, []);
+    saveTrackTransforms(activeLayerName, []);
+    setComposedMatrices(prev => ({
+      ...prev,
+      [activeLayerName]: []
+    }));
+  
+    // Now perform server resets sequentially
+    try {
+      const resetData = { matrix: identityMatrix, layerName: activeLayerName };
+  
+      // First tell the server to reset transform
+      await fetch(`${BASE_URL}/transform`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(resetData),
+      });
+  
+      // Then reset origin AFTER transform reset completes
+      await fetch(`${BASE_URL}/reset_origin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+  
+      console.log("Reset complete for", activeLayerName);
+    } catch (error) {
+      console.error("Failed to reset matrix on server:", error);
     }
   };
-
-
-  const onResetInputs = () => {
-    setTranslateX(0)
-    setTranslateY(0)
-    setTranslateZ(0)
-    setRotateX(0)
-    setRotateY(0)
-    setRotateZ(0)
-    setScaleX(1)
-    setScaleY(1)
-    setScaleZ(1)
-    setReflectX(false)
-    setReflectY(false)
-    setReflectZ(false)
-
-    setMatrix([
-      [1, 0, 0, 0],
-      [0, 1, 0, 0],
-      [0, 0, 1, 0],
-      [0, 0, 0, 1]
-    ])
-  }
+  
 
   const undoLastTransform = async () => {
     if (
       !activeLayerName ||
-      !layerOps[activeLayerName]?.length ||
-      !composedMatrices[activeLayerName]?.length
+      !composedMatrices[activeLayerName] ||
+      composedMatrices[activeLayerName].length === 0
     ) {
       console.warn("No transform to undo for layer:", activeLayerName);
       return false;
     }
   
-    // Pop the last matrix from layerOps
-    const newLayerOps = [...layerOps[activeLayerName]];
-    newLayerOps.pop();
-  
-    // Pop the last composed matrix
     const newComposedHistory = [...composedMatrices[activeLayerName]];
     newComposedHistory.pop();
-    console.log("HISTORY", newComposedHistory)
   
-    // Get the new current composed matrix
-    const lastComposed = newComposedHistory.length > 0
-      ? newComposedHistory[newComposedHistory.length - 1]
-      : [
-          [1, 0, 0, 0],
-          [0, 1, 0, 0],
-          [0, 0, 1, 0],
-          [0, 0, 0, 1],
-        ];
-    
-    // Update state
-    saveLayerState(activeLayerName, newLayerOps);
+    const lastComposed =
+      newComposedHistory.length > 0
+        ? newComposedHistory[newComposedHistory.length - 1]
+        : [
+            [1, 0, 0, 0],
+            [0, 1, 0, 0],
+            [0, 0, 1, 0],
+            [0, 0, 0, 1],
+          ];
+  
+    // ✅ Always update the display to the composed one
     setComposedMatrices((prev) => ({
       ...prev,
       [activeLayerName]: newComposedHistory,
     }));
-
-    console.log("COMPOSED", composedMatrices[activeLayerName])
+    setDisplayMatrix(lastComposed);
+  
+    saveLayerState(activeLayerName, newComposedHistory);
     saveTrackTransforms(activeLayerName, (prev) =>
       prev?.length ? prev.slice(0, -1) : []
     );
   
-    // Send last composed matrix to server
-    const transformData = [
-      [
-        [lastComposed[0][0], lastComposed[0][1], lastComposed[0][2], lastComposed[0][3]],
-        [lastComposed[1][0], lastComposed[1][1], lastComposed[1][2], lastComposed[1][3]],
-        [lastComposed[2][0], lastComposed[2][1], lastComposed[2][2], lastComposed[2][3]],
-      ],
-      activeLayerName,
-    ];
+    const transformData = { matrix: lastComposed, layerName: activeLayerName };
   
     try {
       await fetch(`${BASE_URL}/transform`, {
@@ -521,91 +311,103 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
       return false;
     }
   };  
-  
-  const handleSaveLayerState = async () => {
-    if (activeLayerName) {
-      saveLayerState(activeLayerName, matrix);
-      // For snapping origin to transformed origin
-      try {
-        await fetch(`${BASE_URL}/set_origin`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(eachTransformMatrix), // 7/14: currently set_origin does not change origin
-        });
-      } catch (error) {
-        console.error("Error updating origin:", error);
-      }
-
-      const transformValues = {
-        translateX,
-        translateY,
-        translateZ,
-        rotateX,
-        rotateY,
-        rotateZ,
-        scaleX,
-        scaleY,
-        scaleZ,
-        reflectX,
-        reflectY,
-        reflectZ,
-      };
-
-      for (const key in transformValues) {
-        const value = transformValues[key];
-        const defaultVal =
-          key.startsWith("scale") ? 1 :
-            key.startsWith("reflect") ? false : 0;
-
-
-        if (
-          (key.startsWith("reflect") && value === true) ||
-          (!key.startsWith("reflect") && value !== defaultVal)
-        ) {
-          const description = describeTransform(key, value);
-          console.log("Saving description:", description, "for", activeLayerName);
-          saveTrackTransforms(activeLayerName, description);
-        }
-      }
-      onResetInputs();
-    } else {
-      console.error("No layer selected.");
-    }
-  };
 
   const onExportMatrix = () => {
     const filename = "transform_matrix.json";
-    const jsonStr = JSON.stringify({ matrix }, null, 2);
-  
+    const jsonStr = JSON.stringify({ displayMatrix }, null, 2);
     const blob = new Blob([jsonStr], { type: "application/json" });
     const url = URL.createObjectURL(blob);
-  
     const link = document.createElement("a");
-    link.href = url;
-    link.download = filename;
-    link.click();
-  
+    link.href = url; link.download = filename; link.click();
     URL.revokeObjectURL(url);
   };
 
-  // const onSetOrigin = async () => {
-  //   const response = await fetch(`${BASE_URL}/set_origin_button`, {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ layerName: activeLayerName })
-  //   });
-  //   const data = await response.json();
-  //   console.log("Local position response:", data);
+  const handleSaveLayerState = async () => {
+    if (!activeLayerName) {
+      console.error("No layer selected.");
+      return;
+    }
 
-  //   // const origin_transform = await fetch(`${BASE_URL}/set_origin_button`)
-  //   // console.log(origin_transform)
-  // }
+    saveLayerState(activeLayerName, matrix);
+    try {
+      await fetch(`${BASE_URL}/set_origin`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(eachTransformMatrix)
+      });
+    } catch (error) {
+      console.error("Error updating origin:", error);
+    }
+
+    // setComposedMatrices(prev => {
+    //   const prevHistory = prev[activeLayerName] || [];
+    //   const lastComposed =
+    //   prevHistory.length > 0
+    //     ? prevHistory[prevHistory.length - 1]
+    //     : [
+    //         [1, 0, 0, 0],
+    //         [0, 1, 0, 0],
+    //         [0, 0, 1, 0],
+    //         [0, 0, 0, 1],
+    //       ];
+    
+    //   // ✅ Multiply last composed with the new transform
+    //   const newComposed = multiplyMatrices(lastComposed, matrix);
+    
+    //   const updatedHistory = [...prevHistory, newComposed];
+    
+    //   // ✅ Update displayMatrix with the *composed* matrix
+    //   setDisplayMatrix(newComposed);
+    
+    //   return {
+    //     ...prev,
+    //     [activeLayerName]: updatedHistory
+    //   };
+    // });
+
+    setComposedMatrices(prev => {
+      const prevHistory = prev[activeLayerName] || [];
+      const lastComposed = prevHistory.length ? prevHistory[prevHistory.length-1] : [
+        [1, 0, 0, 0],
+        [0, 1, 0, 0],
+        [0, 0, 1, 0],
+        [0, 0, 0, 1]
+      ];
+      const newComposed = multiplyMatrices(lastComposed, matrix);
+    
+      setDisplayMatrix(newComposed); // ✅ always show composed
+    
+      return {
+        ...prev,
+        [activeLayerName]: [...prevHistory, newComposed]
+      };
+    });
+    
+    const transformValues = { translateX, translateY, translateZ, rotateX, rotateY, rotateZ, scaleX, scaleY, scaleZ, reflectX, reflectY, reflectZ };
+    for (const key in transformValues) {
+      const value = transformValues[key];
+      const defaultVal = key.startsWith("scale") ? 1 : key.startsWith("reflect") ? false : 0;
+      if ((key.startsWith("reflect") && value === true) || (!key.startsWith("reflect") && value !== defaultVal)) {
+        const description = describeTransform(key, value);
+        saveTrackTransforms(activeLayerName, description);
+      }
+    }
+    onResetInputs();
+  };
+
+  const onResetInputs = () => {
+    setTranslateX(0); setTranslateY(0); setTranslateZ(0);
+    setRotateX(0); setRotateY(0); setRotateZ(0);
+    setScaleX(1); setScaleY(1); setScaleZ(1);
+    setReflectX(false); setReflectY(false); setReflectZ(false);
+    setMatrix([[1, 0, 0, 0], [0, 1, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]]);
+  };
 
   return (
     <TransformContainer>
       {originCoord && (
         <p>
-          <span style={{ fontWeight: 'bold', fontSize: '1.2em'}}>Current Origin:</span> [{originCoord.map(v => v.toFixed(2)).join(', ')}]
+          <span style={{ fontWeight: 'bold', fontSize: '1.2em' }}>Current Origin:</span> [{originCoord.map(v => v.toFixed(2)).join(', ')}]
         </p>
       )}
       <SettingContainer>
@@ -856,9 +658,9 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
 
       <MatrixContainer>
         <Subtitle>Transformation Matrix</Subtitle>
-        {Array.isArray(matrix) && Array.isArray(matrix[0]) && ( // In case matrix is null, prevent rendering error
+        {Array.isArray(displayMatrix) && Array.isArray(displayMatrix[0]) && (
           <GridContainer>
-            {matrix.flat().map((value, index) => (
+            {displayMatrix.flat().map((value, index) => (
               <GridCell key={index}>
                 {value % 1 === 0 ? value : value.toFixed(2)}
               </GridCell>

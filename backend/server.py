@@ -328,17 +328,31 @@ def get_layers():
         layers = viewer_state.get('layers', [])
         extracted_info = []
 
-        print("Layers: ", extracted_info)
-
         for layer in layers:
             name = layer.get('name', 'Unnamed')
             type = layer.get('type', 'Unknown type')
             visible = layer.get('visible', 'Unknown')
+
+            num_channels = 1 # Default
+            source = layer.get('source',{})
+
+            if isinstance(source, dict):
+                if 'numChannels' in source:
+                    num_channels = source['numChannels']
+                elif 'dimensions' in source and 'c^' in source['dimensions']:
+                    dim_info = source['dimensions']['c^']
+                    if isinstance(dim_info, dict) and 'scale' in dim_info:
+                        # You might need to adjust this depending on your metadata
+                        num_channels = dim_info.get('size', 1)
+
             extracted_info.append({
                 'name': name,
                 'type': type,
-                'visible': visible
+                'visible': visible,
+                'num_channels': num_channels
             })
+        
+        # print("Layers: ", extracted_info)
 
         return extracted_info
 
@@ -657,75 +671,134 @@ async def update_origin(request: Request):
         print("Error updating origin: ", e)
 '''
 
+# @app.post("/transform")
+# async def transform(request: Request):
+#     try:
+#         m, layerName = await request.json()
+        
+
+#         # print("data from fetch request: ", data)
+#         # matrix_json = json.dumps(transform_matrix)
+
+#         #viewer = neuroglancer.Viewer(token=TOKEN)
+#         #viewerState = viewer.state
+#         #print("ViewerState extracted: ", viewerState)
+#         #pretransform_url = neuroglancer.to_url(viewerState, "https://sonic2.cai-lab.org/neuroglancer/")
+#         #pretransform_url = viewer.get_viewer_url()
+#         #print("Pretransform url: ", pretransform_url)
+#         #print("to_json: ", viewer.state.to_json())
+        
+#         #json = neuroglancer.to_json_dump(viewerState)
+#         #print("JSON: ", json)
+
+#         #parsed_url = neuroglancer.parse_url(pretransform_url)
+
+        
+#         # if 'layers' in pretransform_state:
+#         #     print("if statement")
+#         #     pretransform_state["layers"][0]["source"]["transform"]["matrix"] = transformation_matrix
+#         # else:
+#         #     print("No layers")
+
+#         current_viewer = get_state().viewer
+        
+
+#         # print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
+#         print("State: ", neuroglancer.to_json_dump(current_viewer.state, indent=4), "END STATE")
+
+#         try:
+#             with current_viewer.txn() as s:
+#                 for layer in s.layers:
+#                     if layer.name == layerName:
+#                         # # Create CoordinateSpaceTransform with existing global dimensions
+#                         # transform = neuroglancer.CoordinateSpaceTransform(
+#                         #     output_dimensions=s.dimensions,
+#                         #     matrix=m
+#                         # )
+
+#                         # # Apply the transform to the layer's data source
+#                         # try:
+#                         #     for source in layer.sources:
+#                         #         source.transform = transform
+#                         #     print(f"Updated transform for layer: {layerName}")
+#                         # except Exception as e:
+#                         #     print(f"Failed to set transform for {layerName}: {e}")
+#                         # break
+
+#                         dimensions = neuroglancer.CoordinateSpace(
+#                             names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales
+#                         )
+
+#                         layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
+#                             output_dimensions=dimensions,
+#                             matrix=m
+#                         )
+#             print("Current viewer: ", current_viewer, "END VIEWER")
+
+#         except Exception as e:
+#             print("Error updating matrix: ", {e})
+
+#     except Exception as e:
+#         print("ERROR: ", {e})
+
 @app.post("/transform")
 async def transform(request: Request):
     try:
-        m, layerName = await request.json()
-        
+        payload = await request.json()
+        m = payload.get("matrix")
+        layer_name = payload.get("layerName")
 
-        # print("data from fetch request: ", data)
-        # matrix_json = json.dumps(transform_matrix)
+        if m is None or layer_name is None:
+            return {"error": "Missing required fields: 'matrix' or 'layerName'"}
 
-        #viewer = neuroglancer.Viewer(token=TOKEN)
-        #viewerState = viewer.state
-        #print("ViewerState extracted: ", viewerState)
-        #pretransform_url = neuroglancer.to_url(viewerState, "https://sonic2.cai-lab.org/neuroglancer/")
-        #pretransform_url = viewer.get_viewer_url()
-        #print("Pretransform url: ", pretransform_url)
-        #print("to_json: ", viewer.state.to_json())
-        
-        #json = neuroglancer.to_json_dump(viewerState)
-        #print("JSON: ", json)
-
-        #parsed_url = neuroglancer.parse_url(pretransform_url)
-
-        
-        # if 'layers' in pretransform_state:
-        #     print("if statement")
-        #     pretransform_state["layers"][0]["source"]["transform"]["matrix"] = transformation_matrix
-        # else:
-        #     print("No layers")
+        m = [[float(v) for v in row] for row in m]
 
         current_viewer = get_state().viewer
-        
+        if not current_viewer:
+            return {"error": "No Neuroglancer viewer initialized"}
 
-        # print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
-        print("State: ", neuroglancer.to_json_dump(current_viewer.state, indent=4), "END STATE")
+        with current_viewer.txn() as s:
+            layer_found = False
+            for layer in s.layers:
+                if layer.name == layer_name:
+                    layer_found = True
 
-        try:
-            with current_viewer.txn() as s:
-                for layer in s.layers:
-                    if layer.name == layerName:
-                        # # Create CoordinateSpaceTransform with existing global dimensions
-                        # transform = neuroglancer.CoordinateSpaceTransform(
-                        #     output_dimensions=s.dimensions,
-                        #     matrix=m
-                        # )
+                    dimensions = neuroglancer.CoordinateSpace(
+                        names=s.dimensions.names,
+                        units=s.dimensions.units,
+                        scales=s.dimensions.scales
+                    )
 
-                        # # Apply the transform to the layer's data source
-                        # try:
-                        #     for source in layer.sources:
-                        #         source.transform = transform
-                        #     print(f"Updated transform for layer: {layerName}")
-                        # except Exception as e:
-                        #     print(f"Failed to set transform for {layerName}: {e}")
-                        # break
+                    layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
+                        output_dimensions=dimensions,
+                        matrix=m
+                    )
 
-                        dimensions = neuroglancer.CoordinateSpace(
-                            names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales
-                        )
+                    break
 
-                        layer.source[0].transform = neuroglancer.CoordinateSpaceTransform(
-                            output_dimensions=dimensions,
-                            matrix=m
-                        )
-            print("Current viewer: ", current_viewer, "END VIEWER")
+        print("Current viewer: ", current_viewer, "END VIEWER")
 
-        except Exception as e:
-            print("Error updating matrix: ", {e})
+        if not layer_found:
+            return {"error": f"Layer '{layer_name}' not found"}
+
+        updated_state_json = neuroglancer.to_json_dump(current_viewer.state)
+        updated_state_dict = json.loads(updated_state_json)
+
+        await sio.emit("viewer-state-updated", updated_state_dict)
+        # print("Emitted live viewer-state-updated to all clients")
+
+        return {
+            "status": "success",
+            "message": f"Transform applied to {layer_name}",
+            "updated_layers": len(updated_state_dict.get("layers", []))
+        }
 
     except Exception as e:
-        print("ERROR: ", {e})
+        import traceback
+        traceback.print_exc()
+        return {"error": f"Failed to apply transform: {str(e)}"}
+
+
 
 @app.post("/toggle_visibility")
 async def toggle_visibility(request: Request):
@@ -836,6 +909,27 @@ async def reset_origin():
     with current_viewer.txn() as s:
         s.position = [0.5, 0.5, 0.5]
     return {"status": "origin reset"}
+
+@app.post("/delete_layer")
+async def delete_layer(request: Request):
+    try:
+        data = await request.json()
+        layer_name = data.get("layerName")
+        if not layer_name:
+            return {"error": "Missing layerName"}
+
+        viewer = get_state().viewer
+
+        with viewer.txn() as txn:
+            if layer_name not in txn.layers:
+                return {"error": f"Layer '{layer_name}' not found"}
+
+            del txn.layers[layer_name]
+
+        return {"status": "success", "deleted": layer_name}
+
+    except Exception as e:
+        return {"error": str(e)}
     
 @app.post("/import_layer")
 async def upload_layer(file: UploadFile = File(...), layer_name: str = Form(...)):
@@ -897,14 +991,25 @@ async def upload_viewer_state(file: UploadFile = File(...)):
         if "layers" not in data:
             raise HTTPException(400, "Uploaded viewer state missing 'layers' field.")
         
-        # Load new viewer
         viewer = get_state().viewer
+        
+        # ✅ Apply new viewer state
         viewer.set_state(ViewerState(json_data=data))
-        return {"message": "Viewer state loaded", "url": viewer.get_viewer_url()}
-    
+        
+        # ✅ Broadcast new viewer state to all clients
+        updated_state_json = neuroglancer.to_json_dump(viewer.state)
+        updated_state_dict = json.loads(updated_state_json)
+        await sio.emit("viewer-state-updated", updated_state_dict)
+        print("📡 Emitted viewer-state-updated after import")
+
+        return {
+            "message": "Viewer state loaded",
+            "url": viewer.get_viewer_url()
+        }
     except Exception as e:
         print("Viewer state import error: ", e)
         raise HTTPException(status_code=500, detail=f"Viewer import failed: {e}")
+
 
 @app.post("/update_image_rendering")
 async def update_image_rendering(request: Request):
