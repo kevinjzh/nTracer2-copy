@@ -1,0 +1,22 @@
+{
+    "type": "image",
+    "source": "precomputed://https://sonic2.cai-lab.org/data/102324_fly_3_merge",
+    "tab": "rendering",
+    "annotationColor": "#ffffff",
+    "shader": "#uicontrol invlerp normalized(range=[0, 65535])\nvoid main() {\n    float v = normalized();\n    emitRGB(vec3(0, v, 0));\n}\n",
+    "shaderControls": {
+        "normalized": {
+            "range": [
+                0,
+                100
+            ]
+        }
+    },
+    "channelDimensions": {
+        "c^": [
+            1,
+            ""
+        ]
+    },
+    "name": "102324_fly_3_merge"
+}

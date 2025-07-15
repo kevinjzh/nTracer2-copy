@@ -1,0 +1,22 @@
+#ng-internal-import-btn:hover {
+  background: #45a049 !important;
+}
+
+/* #ng-import-btn {
+    position: absolute;
+    top: 20px;
+    right: 20px;
+    padding: 10px 14px;
+    background-color: #000;
+    color: white;
+    border: none;
+    font-size: 14px;
+    border-radius: 5px;
+    cursor: pointer;
+    z-index: 9999;
+  }
+  
+  #ng-import-btn:hover {
+    background-color: #444;
+  }
+   */

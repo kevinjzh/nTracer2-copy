@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Spectral Connectomics Landing Page</title>
+
+    <script type="text/javascript">
+        // Load data
+        function loadDataset(url) {
+            var iframe = document.getElementById('interface');
+            iframe.src = url;
+        }
+
+        // Toggle nTracer2 window
+        let newWindow = null; // This will hold the reference to your new window
+
+        window.addEventListener('DOMContentLoaded', function () {
+            var urlParams = new URLSearchParams(window.location.search);
+            var viewer = urlParams.get('viewer');
+            var dashboardUrl = urlParams.get('dashboard');
+
+            if (viewer == null || dashboardUrl == null) {
+                console.log("No viewer or dashboard URL provided")
+                return;
+            }
+
+            loadDataset(urlParams.get('viewer'));
+            document.getElementById('dashboardButton').href = dashboardUrl;
+            newWindow = window.open(dashboardUrl, '_blank');
+        });
+
+    </script>
+
+    <style type="text/css">
+        html,
+        body {
+            height: 100%;
+            width: 100%;
+            display: flex;
+            flex-direction: column;
+            background: #EFEDE3;
+            margin: 0;
+            padding: 0;
+            overflow-x: hidden;
+            font-family: Arial, sans-serif;
+
+        }
+
+        #header {
+            background-color: #EFEDE3;
+            color: #fff;
+            padding: 5px 0;
+            flex: none;
+            top: 0;
+            z-index: 1000;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 20px;
+            width: 100%;
+        }
+
+        #interface {
+            width: 100%;
+            flex: auto;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+            margin-right: 20px;
+        }
+
+
+        .nav-button {
+            padding: 3px 6px;
+            background-color: transparent;
+            color: #000;
+            border: 2px solid #000;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+            font-size: 18px;
+            text-decoration: none;
+
+        }
+
+        .nav-button:hover {
+            background-color: #000;
+            /* Changes background to black on hover */
+            color: #fff;
+            /* Changes text color to white on hover */
+        }
+    </style>
+
+</head>
+
+<body>
+
+    <div id="header">
+        <img src="./img/logo.png" alt="Spectral Connectomics Logo; A brain cartoon with a neural network drawn inside." class="logo">
+        <a id="dashboardButton" class="nav-button" target="_blank">Open Dashboard</a>
+    </div>
+
+    <iframe id="interface"></iframe>
+
+</body>
+
+</html>

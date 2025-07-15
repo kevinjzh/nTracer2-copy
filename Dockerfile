@@ -3,7 +3,7 @@ ARG server_port=8085
 FROM python:3.10-slim AS backend-builder
 RUN apt-get update && apt-get install -y --no-install-recommends gcc g++
 RUN pip --no-cache-dir install cython
-RUN pip --no-cache-dir install --user neuroglancer ngauge flask flask-socketio fastapi-socketio numpy python-dotenv fastapi "uvicorn[standard]" sse-starlette httpx
+RUN pip --no-cache-dir install --user neuroglancer ngauge flask flask-socketio fastapi-socketio numpy python-dotenv fastapi "uvicorn[standard]" sse-starlette httpx python-multipart
 COPY backend/compile_cython.py /app/compile_cython.py
 COPY backend/algorithm /app/algorithm
 WORKDIR /app
@@ -13,7 +13,7 @@ RUN python compile_cython.py build_ext --inplace
 #RUN apt-get update && apt-get install -y --no-install-recommends libgeos-dev gcc g++ libsqlite3-dev liblz4-dev libbz2-dev libboost-all-dev libx264-dev libzstd-dev
 #COPY db /app
 #WORKDIR /app
-#RUN g++ -O3 app.cpp -Iasio_include -lpthread -lsqlite3 -lz -lx264 -lzstd -std=c++17
+#RUN g++ -O3 app.cpp -Iasio_include -lpthread -lsqlite3 -lz -lx264 -lzstd -std=c++17x
 
 FROM node:gallium-alpine3.18 AS dashboard-builder
 ARG server_port
@@ -50,6 +50,7 @@ COPY backend /app
 COPY --from=backend-builder /app/algorithm/astar/*.so ./app/algorithm/astar/
 COPY --from=backend-builder /root/.local /root/.local
 COPY --from=dashboard-builder /app/build /app/dashboard
+COPY neuroglancer/dist/client/ /app/neuroglancer-dist/
 #COPY docker_runner.sh /app/docker_runner.sh
 #COPY db/data /mnt/data1
 COPY /landing /app/landing

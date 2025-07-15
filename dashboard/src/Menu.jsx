@@ -1,15 +1,19 @@
 import './App.css';
 import {useState} from 'react'
 import TransformMenu from './TransformMenu'
+import RenderMenu from './RenderMenu'
 import styled from 'styled-components/macro'
 import { BASE_URL } from './App'
 
-export default function Menu({ saveLayerState, activeLayerName, layerOps }) {
+export default function Menu({ saveLayerState, activeLayerName, activeLayerType, layerOps, trackTransforms, saveTrackTransforms }) {
     const [tabIndex, setTabIndex] = useState(0);   
     let selectedTabMenu;
     switch (tabIndex) {
+        case 0:
+            selectedTabMenu = <RenderMenu activeLayerName={activeLayerName} layerType={activeLayerType} />;
+            break;
         case 1:
-            selectedTabMenu = <TransformMenu saveLayerState={saveLayerState} activeLayerName={activeLayerName} layerOps={layerOps} />;
+            selectedTabMenu = <TransformMenu saveLayerState={saveLayerState} activeLayerName={activeLayerName} layerOps={layerOps} trackTransforms={trackTransforms} saveTrackTransforms={saveTrackTransforms}/>;
             break;
 
         default:

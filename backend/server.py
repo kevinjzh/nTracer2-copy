@@ -12,9 +12,10 @@ import webbrowser
 import asyncio
 from urllib.parse import quote_plus, urlparse
 import posixpath
+import requests
 
 import neuroglancer.webdriver
-from neuroglancer.viewer_state import ManagedLayer
+from neuroglancer.viewer_state import ManagedLayer, ViewerState, Layer
 from neuroglancer.viewer_config_state import ConfigState, ActionState
 from neuroglancer import (
     Viewer,
@@ -44,17 +45,29 @@ from ntracer.visualization.indicator import IndicatorFunctions
 from ntracer.visualization.freehand import FreehandFunctions
 import os
 from fastapi.staticfiles import StaticFiles
-
-
-from fastapi import FastAPI, Request, Response
+from fastapi import FastAPI, Request, Response, UploadFile, File, Form, HTTPException, Query
 from fastapi_socketio import SocketManager
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+import numpy as np
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("socketio")
 
 app = FastAPI()
+
+@app.get("/proxy")
+async def proxy(url: str = Query(...)):
+    async with httpx.AsyncClient() as client:
+        async with client.stream("GET", url) as resp:
+            if resp.status_code != 200:
+                return {"error": f"Failed to fetch {url}", "status": resp.status_code}
+            
+            return StreamingResponse(
+                resp.aiter_bytes(),
+                media_type=resp.headers.get("content-type", "application/octet-stream")
+            )
+
 
 ALLOWED_ORIGINS = [
     "http://localhost:8085",
@@ -80,6 +93,12 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+from fastapi.responses import FileResponse
+
+@app.get("/debug-test")
+async def debug_test():
+    return FileResponse("/app/neuroglancer-dist/index.html")
 
 
 app.mount("/dashboard", StaticFiles(directory="dashboard", html=True), name="static")
@@ -114,33 +133,18 @@ async def disconnect(sid):
 async def emit_layers_updated():
     await sio.emit('layers-updated')
 
-SAVED_LAYER_CONFIGS = {}
-
 @app.on_event("startup")
 async def start_background_polling():
-    global SAVED_LAYER_CONFIGS
-    logger.info("Initializing Neuroglancer viewer and saving initial layer configurations...")
-
-    try:
-        viewer = get_state().viewer
-        # Initialize layers
-        layers = viewer.state.layers
-        for i in range(len(layers)):
-            name = layers[i].name
-            layer_json = json.loads(neuroglancer.to_json_dump(layers[i]))
-            SAVED_LAYER_CONFIGS[name] = layer_json
-
-        logger.info(f"Saved {len(SAVED_LAYER_CONFIGS)} initial layer configurations.")
-    except Exception as e:
-        logger.error(f"Error initializing SAVED_LAYER_CONFIGS: {e}")
-
-    logger.info("Starting background polling task for Neuroglancer viewer state...")
+    logger.info("Starting background polling task")
     asyncio.create_task(poll_neuroglancer_state())
 
 logger = logging.getLogger(__name__)
 
 previous_layers = None
+previous_position = [0, 0, 0]
 
+'''
+Unused
 def extract_layer_metadata(state):
     # Return dict of layers
     layers = state.get("layers", [])
@@ -157,35 +161,41 @@ def extract_layer_metadata(state):
         }
 
     return result
+'''
 
 async def poll_neuroglancer_state():
-    global previous_layers
+    global previous_layers, previous_position
     while True:
         try:
             # Get state as json
             state_json = neuroglancer.to_json_dump(get_state().viewer.state)
-            
-            # Ensure state_json is a string before parsing
-            if isinstance(state_json, str):
-                state = json.loads(state_json)
-            else:
-                state = state_json  # Already a dictionary
-            
+
+            # Parse to dict if needed
+            state = json.loads(state_json) if isinstance(state_json, str) else state_json
+
             current_layers = state.get("layers", [])
-            
-            # If layer config changed, emit socket event
+            current_position = state.get("position", [])
+
+            # Emit layers update if different
             if current_layers != previous_layers:
                 previous_layers = current_layers
-                # logger.info("Emitting 'layers-updated'")
                 await sio.emit('layers-updated')
+
+            # Emit position update if different
+            if current_position != previous_position:
+                previous_position = current_position
+                await sio.emit('position-updated', {'position': current_position})
+
         except Exception as e:
             logger.error(f"Polling error: {e}")
         
-        await asyncio.sleep(1)  # check every second
-
-
+        await asyncio.sleep(0.5)
 
 app.mount("/viewer", StaticFiles(directory="landing", html=True), name="viewer")
+
+# Load NG locally
+app.mount("/v", StaticFiles(directory="/app/neuroglancer-dist"), name="neuroglancer")
+
 @app.get("/", response_model=None)
 async def index() -> RedirectResponse:
     global user_id
@@ -201,13 +211,13 @@ async def index() -> RedirectResponse:
                 "annotationColor", optional(text_type)
             )
 
-        neuroglancer.set_server_bind_address(
-            bind_address="0.0.0.0",  # Allow access from outside Docker container
-            bind_port=state.neuroglancer_port,
-        )
+        # neuroglancer.set_server_bind_address(
+        #     bind_address="0.0.0.0",  # Allow access from outside Docker container
+        #     bind_port=state.neuroglancer_port,
+        # )
 
         # runs image layer functions
-        viewer = neuroglancer.Viewer(token=TOKEN)
+        viewer = neuroglancer.Viewer()
         user_id+=1
         state.viewer = viewer
         ImageFunctions.image_init()
@@ -262,17 +272,51 @@ async def index() -> RedirectResponse:
             s.input_event_bindings.data_view["alt+dblclick0"] = "select branch endpoint"
             s.input_event_bindings.data_view["keyo"] = "complete soma"
 
-    viewer_url = quote_plus(
-        urlparse(posixpath.join(os.environ["PUBLIC_URL"], f"v/{TOKEN}/"))
-        ._replace(netloc=f"{urlparse(os.environ['PUBLIC_URL']).hostname}:{state.neuroglancer_port}")
-        .geturl()
+    # viewer_url = quote_plus(
+    #     urlparse(posixpath.join(os.environ["PUBLIC_URL"], f"v/{TOKEN}/"))
+    #     ._replace(netloc=f"{urlparse(os.environ['PUBLIC_URL']).hostname}:{state.neuroglancer_port}")
+    #     .geturl()
+    # )
+
+    # viewer_url = "http://localhost:8050/v/"
+
+    # # print(viewer_url)
+    # dashboard_url = quote_plus("/dashboard")
+    # return RedirectResponse(
+    #     f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
+    # )
+    
+    # v2
+    # viewer_url = "http://localhost:8050/v/index.html"
+    # viewer_url = "http://localhost:8085/v/index.html"
+
+    # dashboard_url = quote_plus("/dashboard")
+
+    # return RedirectResponse(
+    #     f"/viewer?viewer={quote_plus(viewer_url)}&dashboard={dashboard_url}"
+    # )
+
+    # v3
+    viewer_url = "http://localhost:8085/v/index.html"
+    dashboard_url = quote_plus("/dashboard")
+
+    return RedirectResponse(
+        f"/viewer?viewer={quote_plus(viewer_url)}&dashboard={dashboard_url}"
     )
 
-    # print(viewer_url)
-    dashboard_url = quote_plus("/dashboard")
-    return RedirectResponse(
-        f"/viewer?viewer={viewer_url}&dashboard={dashboard_url}"
-    )
+@app.get("/viewer_state")
+async def get_viewer_state():
+    try:
+        viewer = get_state().viewer
+        if not viewer:
+            return {"error": "No viewer initialized yet"}
+
+        # Dump the entire current viewer state
+        viewer_state_json = neuroglancer.to_json_dump(viewer.state)
+        return json.loads(viewer_state_json)
+    except Exception as e:
+        print("Error fetching viewer_state:", e)
+        return {"error": str(e)}
 
 @app.get("/layers")
 def get_layers():
@@ -289,9 +333,11 @@ def get_layers():
         for layer in layers:
             name = layer.get('name', 'Unnamed')
             type = layer.get('type', 'Unknown type')
+            visible = layer.get('visible', 'Unknown')
             extracted_info.append({
                 'name': name,
-                'type': type
+                'type': type,
+                'visible': visible
             })
 
         return extracted_info
@@ -299,7 +345,6 @@ def get_layers():
     except Exception as e:
         print("Error retrieving layer info:", e)
         return {"error": str(e)}
-
 
 def get_dashboard_state():
     return get_state().dashboard_state.get_state_dict()
@@ -612,10 +657,8 @@ async def update_origin(request: Request):
         print("Error updating origin: ", e)
 '''
 
-
-
-@app.post("/apply_translation")
-async def apply_translation(request: Request):
+@app.post("/transform")
+async def transform(request: Request):
     try:
         m, layerName = await request.json()
         
@@ -644,6 +687,8 @@ async def apply_translation(request: Request):
         #     print("No layers")
 
         current_viewer = get_state().viewer
+        
+
         # print("Class: ", current_viewer.__class__) # current_viewer is <class 'neuroglancer.viewer.Viewer'>
         print("State: ", neuroglancer.to_json_dump(current_viewer.state, indent=4), "END STATE")
 
@@ -651,7 +696,21 @@ async def apply_translation(request: Request):
             with current_viewer.txn() as s:
                 for layer in s.layers:
                     if layer.name == layerName:
-                        # print("Source: ", layer.source) # Brackets around source? Not originally there
+                        # # Create CoordinateSpaceTransform with existing global dimensions
+                        # transform = neuroglancer.CoordinateSpaceTransform(
+                        #     output_dimensions=s.dimensions,
+                        #     matrix=m
+                        # )
+
+                        # # Apply the transform to the layer's data source
+                        # try:
+                        #     for source in layer.sources:
+                        #         source.transform = transform
+                        #     print(f"Updated transform for layer: {layerName}")
+                        # except Exception as e:
+                        #     print(f"Failed to set transform for {layerName}: {e}")
+                        # break
+
                         dimensions = neuroglancer.CoordinateSpace(
                             names=s.dimensions.names, units=s.dimensions.units, scales=s.dimensions.scales
                         )
@@ -661,6 +720,7 @@ async def apply_translation(request: Request):
                             matrix=m
                         )
             print("Current viewer: ", current_viewer, "END VIEWER")
+
         except Exception as e:
             print("Error updating matrix: ", {e})
 
@@ -711,3 +771,171 @@ async def toggle_visibility(request: Request):
                 break
 
     return {"status": "success", "visible": visible}
+
+@app.post("/set_origin")
+async def set_origin(request: Request):
+    try:
+        m = await request.json()
+        current_viewer = get_state().viewer
+        viewer_state_json = neuroglancer.to_json_dump(get_state().viewer.state, indent=4)
+        viewer_state = json.loads(viewer_state_json)
+
+        current_origin = viewer_state.get('position')
+        homogenous_origin = np.array(current_origin + [1.0])
+        homogenous_matrix = np.array(m)
+        transformed_origin = homogenous_matrix @ homogenous_origin
+
+        # with current_viewer.txn() as s:
+        #     s.position = transformed_origin[:3].tolist()
+    
+    except Exception as e:
+        return {"Error setting origin": str(e)}
+    
+@app.post("/set_origin_button") # Print local position and dimension
+async def set_origin(request: Request):
+    try:
+        data = await request.json()
+        layer_name = data.get("layerName")
+        if not layer_name:
+            return {"error": "Missing layerName"}
+
+        viewer = get_state().viewer
+
+        with viewer.txn() as s:
+            if layer_name in s.layers:
+                layer = s.layers[layer_name]
+                print(f"Local position for layer '{layer_name}':", layer.local_position)
+                try:
+                    print(f"Local dimension:", layer.local_dimensions)
+                except Exception as e:
+                    print(f"Error accessing local_dimensions: {e}")
+
+                return {"local_position": layer.local_position.tolist() if layer.local_position is not None else None}
+            else:
+                return {"error": f"Layer '{layer_name}' not found"}
+    
+    except Exception as e:
+        return {"error": str(e)}
+
+    # try:
+    #     current_viewer = get_state().viewer
+    #     viewer_state_json = neuroglancer.to_json_dump(get_state().viewer.state, indent=4)
+    #     viewer_state = json.loads(viewer_state_json)
+
+    #     current_origin = viewer_state.get('position')
+
+    #     with current_viewer.txn() as s:
+    #         s.position = current_origin.tolist()
+    
+    # except Exception as e:
+    #     return {"Error setting origin": str(e)}
+
+@app.post("/reset_origin")
+async def reset_origin():
+    current_viewer = get_state().viewer
+    with current_viewer.txn() as s:
+        s.position = [0.5, 0.5, 0.5]
+    return {"status": "origin reset"}
+    
+@app.post("/import_layer")
+async def upload_layer(file: UploadFile = File(...), layer_name: str = Form(...)):
+    try:
+        contents = await file.read()
+        data = json.loads(contents.decode("utf-8"))
+
+        if data.get("type") != "image":
+            raise HTTPException(status_code=400, detail="Only 'image' layers are supported.")
+
+        # Remove fields that conflict with constructor
+        data.pop("type", None)
+        data.pop("name", None)  # Don't pass it as a constructor arg
+
+        # Create layer object without name
+        layer_obj = ImageLayer(**data)
+
+        # Now set the name separately
+        layer_obj.name = layer_name
+
+        # Append to viewer
+        viewer = get_state().viewer
+        with viewer.txn() as s:
+            s.layers.append(layer_obj)
+
+        return {
+            "message": f"Layer '{layer_name}' added successfully.",
+            "url": viewer.get_viewer_url()
+        }
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=500, detail=f"Layer import failed: {e}")
+    
+    # try:
+    #     contents = await file.read()
+    #     data = json.loads(contents.decode("utf-8"))
+    #     if "type" not in data:
+    #         raise HTTPException(400, "Uploaded layer missing 'type' field.")
+        
+    #     # Update view state with new layer
+    #     viewer = get_state().viewer
+    #     with viewer.txn() as s:
+    #         layer_obj = Layer(**data)
+    #         s.layers[layer_name] = data
+    #     return {"message": f"Layer '{layer_name}' added", "url": viewer.get_viewer_url()}
+    
+    # except Exception as e:
+    #     print("Layer import error: ", e)
+    #     raise HTTPException(status_code=500, detail=f"Layer import failed: {e}")
+
+
+@app.post("/import_viewer")
+async def upload_viewer_state(file: UploadFile = File(...)):
+    try:
+        contents = await file.read()
+        data = json.loads(contents.decode("utf-8"))
+        if "layers" not in data:
+            raise HTTPException(400, "Uploaded viewer state missing 'layers' field.")
+        
+        # Load new viewer
+        viewer = get_state().viewer
+        viewer.set_state(ViewerState(json_data=data))
+        return {"message": "Viewer state loaded", "url": viewer.get_viewer_url()}
+    
+    except Exception as e:
+        print("Viewer state import error: ", e)
+        raise HTTPException(status_code=500, detail=f"Viewer import failed: {e}")
+
+@app.post("/update_image_rendering")
+async def update_image_rendering(request: Request):
+    data = await request.json()
+    layer_name = data["layerName"]
+    opacity = float(data["opacity"])
+    shader = data["shader"]
+    shader_controls = data.get("shaderControls", {})
+    viewer = get_state().viewer
+
+    with viewer.txn() as s:
+        s.layers[layer_name] = neuroglancer.ImageLayer(
+            source=s.layers[layer_name].source,
+            opacity=opacity,
+            shader=shader,
+            shader_controls=shader_controls
+        )
+    return { "status": "success" }
+
+@app.post("/update_segment_rendering")
+async def update_segment_rendering(request: Request):
+    data = await request.json()
+    layer_name = data["layerName"]
+    opacity = float(data["opacity"])
+    saturation = float(data["saturation"])
+    viewer = get_state().viewer
+
+    with viewer.txn() as s:
+        s.layers[layer_name] = neuroglancer.SegmentationLayer(
+            source=s.layers[layer_name].source,
+            opacity=opacity,
+            saturation=saturation
+        )
+    return {"status": "success"}

@@ -1,30 +1,172 @@
 import './App.css';
-import Menu from './Menu'
-import { SocketContext } from './Context'
-import { useEffect, useState, useReducer, useRef } from 'react'
-import styled from 'styled-components/macro'
+import Menu from './Menu';
+import { SocketContext } from './Context';
+import { useEffect, useState, useReducer, useRef } from 'react';
+import styled from 'styled-components/macro';
 import { io } from 'socket.io-client';
-export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`
+export const BASE_URL = `http://localhost:${process.env.REACT_APP_SERVER_PORT}`;
 
 function App() {
-  const [data, setData] = useState(null); //Data is name, type
+  const [data, setData] = useState(null); //Data is name, type, visible
   const [socketConnected, setSocketConnected] = useState(false);
   const [connectionError, setConnectionError] = useState(null);
   const socket = useRef(null);
   const [activeLayer, setActiveLayer] = useState(null);
   const [layerOps, setLayerOps] = useState({});
+  const [trackTransforms, setTrackTransforms] = useState({});
+
+  const fileInputRef = useRef(null);
+  const importModeRef = useRef(null);
+
+  const handleFileChange = (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async (e) => {
+      try {
+        const contents = e.target.result;
+        const jsonData = JSON.parse(contents);
+    
+        if (importModeRef.current === 'layer') {
+          // ✅ Handle single layer import
+          if (!jsonData.type) {
+            alert("Invalid layer JSON: missing 'type' field.");
+            return;
+          }
+    
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("layer_name", file.name.replace(".json", ""));
+    
+          const res = await fetch(`${BASE_URL}/import_layer`, {
+            method: "POST",
+            body: formData,
+          });
+    
+          const result = await res.json();
+          console.log("Layer import success:", result);
+        }
+    
+        else if (importModeRef.current === 'viewer') {
+          // ✅ Handle full viewer state import
+          if (!jsonData.layers) {
+            alert("Invalid viewer state JSON: missing 'layers' field.");
+            return;
+          }
+    
+          const formData = new FormData();
+          formData.append("file", file);
+    
+          const res = await fetch(`${BASE_URL}/import_viewer`, {
+            method: "POST",
+            body: formData,
+          });
+    
+          const result = await res.json();
+          console.log("Import success:", result);
+    
+          // ✅ After backend loads state, fetch the updated viewer_state
+          const updatedStateRes = await fetch(`${BASE_URL}/viewer_state`);
+          const updatedStateJson = await updatedStateRes.json();
+    
+          console.log("Pushing updated viewer_state to iframe:", updatedStateJson);
+    
+          // ✅ Push updated state into the Neuroglancer iframe UI
+          const iframe = document.getElementById("interface");
+          iframe?.contentWindow?.postMessage(
+            { "neuroglancer/set-state": updatedStateJson },
+            "*"
+          );
+        }
+    
+      } catch (error) {
+        alert("Failed to read or upload JSON: " + error.message);
+      }
+    };
+    
+
+    reader.readAsText(file);
+  };
+
+  const handleImportStateJSON = () => {
+    console.log("Triggering file input for layer import");
+    importModeRef.current = "layer";
+    console.log("Attempting to click:", fileInputRef.current);
+    console.log("Is in DOM?", document.body.contains(fileInputRef.current));
+    fileInputRef.current?.click();
+  };
+
+  const handleImportViewerJSON = () => {
+    console.log("Triggering file input for viewer import");
+    importModeRef.current = "viewer";
+    fileInputRef.current?.click();
+  };
+
+  // const handleImportViewerJSON = () => {
+  //   console.log("Triggering file input for viewer import");
+  //   importModeRef.current = "viewer";
+  //   console.log("Attempting to click:", fileInputRef.current);
+  //   console.log("Is in DOM?", document.body.contains(fileInputRef.current));
+  //   fileInputRef.current?.click();
+  // };
+
+  const handleExportJSON = () => {
+    console.log('Export Layer clicked');
+  };
+
+  const handleUndo = () => {
+    console.log('Undo clicked');
+  };
+
+  const handleRedo = () => {
+    console.log('Redo clicked');
+  };
+
+  const loadPluginA = () => {
+    console.log('Load Plugin A clicked');
+  };
+
+  const loadPluginB = () => {
+    console.log('Load Plugin B clicked');
+  };
 
   const saveLayerState = (layerName, matrix) => {
     setLayerOps((prevLayerOps) => ({
-        ...prevLayerOps,
-        [layerName]: prevLayerOps[layerName] ? [...prevLayerOps[layerName], matrix] : [matrix],
+      ...prevLayerOps,
+      [layerName]: prevLayerOps[layerName] ? [...prevLayerOps[layerName], matrix] : [matrix],
     }));
     console.log("Layer state saved:", layerName, matrix);
   };
+
+  const saveTrackTransforms = (layerName, transformDescriptionOrUpdater) => {
+    setTrackTransforms((prev) => {
+      const current = prev[layerName] || [];
   
+      const updated = typeof transformDescriptionOrUpdater === 'function'
+        ? transformDescriptionOrUpdater(current)
+        : Array.isArray(transformDescriptionOrUpdater)
+          ? transformDescriptionOrUpdater
+          : [...current, transformDescriptionOrUpdater];
+  
+      return {
+        ...prev,
+        [layerName]: updated,
+      };
+    });
+  };  
+
+  // const saveTrackTransforms = (layerName, transformDescription) => {
+  //   setTrackTransforms((prev) => ({
+  //     ...prev,
+  //     [layerName]: typeof transformDescription === 'function'
+  //       ? transformDescription(prev[layerName] || [])
+  //       : [...(prev[layerName] || []), transformDescription]
+  //   }));
+  // };
+  
+
   useEffect(() => {
-    console.log(`Initializing Socket.IO connection to ${BASE_URL}`);
-  
     if (!socket.current) {
       socket.current = io(BASE_URL, {
         path: '/socket.io/',
@@ -39,30 +181,30 @@ function App() {
         },
         withCredentials: true
       });
-  
+
       socket.current.on('connect', () => {
         console.log('Socket.IO connected successfully with ID:', socket.current.id);
         setSocketConnected(true);
         setConnectionError(null);
       });
-  
+
       socket.current.on('connection_established', (data) => {
         console.log('Server confirmed connection:', data);
       });
-  
+
       socket.current.on('connect_error', (error) => {
         console.error('Socket.IO connection error:', error);
         setSocketConnected(false);
         setConnectionError(`Connection error: ${error.message}`);
       });
-  
+
       socket.current.on('disconnect', (reason) => {
         console.log('Socket disconnected:', reason);
         setSocketConnected(false);
         setConnectionError(`Disconnected: ${reason}`);
       });
     }
-  
+
     const fetchLayers = async () => {
       try {
         console.log('Fetching layers from:', `${BASE_URL}/layers`);
@@ -74,29 +216,30 @@ function App() {
           }
         });
         const json = await response.json();
+        console.log("Fetched JSON:", json);
         setData(json);
       } catch (error) {
         console.error('Error fetching layers:', error);
       }
     };
-  
+
     fetchLayers();
-  
+
     if (socket.current) {
       socket.current.on('layers-updated', (updated) => {
         if (updated?.layers) {
-          //console.log("Received updated layers via socket:", updated.layers);
           const layerArray = Object.entries(updated.layers).map(([name, info]) => ({
             name,
-            type: info.type
+            type: info.type,
+            visible: info.visible !== false
           }));
           setData(layerArray);
         } else {
-          fetchLayers(); // fallback if backend didn't send full data
+          fetchLayers(); // fallback
         }
       });
     }
-  
+
     return () => {
       if (socket.current) {
         socket.current.off('layers-updated');
@@ -107,48 +250,171 @@ function App() {
       }
     };
   }, []);
+
+  useEffect(() => {
+    const iframe = document.getElementById("interface");
+    if (!iframe) {
+      console.warn("No iframe found for viewer!");
+      return;
+    }
   
+    let syncInterval = null;
   
+    // ✅ Listen for messages from iframe
+    const handleMessage = (event) => {
+      // 1. Neuroglancer inside iframe tells us it’s ready
+      if (event.data?.["neuroglancer-ready"]) {
+        console.log("✅ Neuroglancer inside iframe is ready");
+  
+        // ✅ Start periodic viewer_state sync *only after ready*
+        syncInterval = setInterval(async () => {
+          try {
+            console.log("Fetching latest /viewer_state...");
+            const res = await fetch(`${BASE_URL}/viewer_state`);
+            const stateJson = await res.json();
+            console.log("Fetched viewer_state:", stateJson);
+  
+            if (!stateJson.error) {
+              iframe.contentWindow?.postMessage(
+                { "neuroglancer/set-state": stateJson },
+                "*"
+              );
+            }
+          } catch (err) {
+            console.error("Failed to fetch viewer_state:", err);
+          }
+        }, 2000);
+      }
+    };
+  
+    // ✅ Add listener for iframe postMessages
+    window.addEventListener("message", handleMessage);
+  
+    // ✅ Cleanup on unmount
+    return () => {
+      window.removeEventListener("message", handleMessage);
+      if (syncInterval) clearInterval(syncInterval);
+    };
+  }, []);
+  
+
   return (
-    <Main>
-      <DashboardText>Dashboard</DashboardText>
+    <SocketContext.Provider value={socket}>
+      <Main>
+        <DashboardText>Dashboard</DashboardText>
 
-      <Ribbon>
-        <RibbonButton>Edit</RibbonButton>
-        <RibbonButton>Plug-ins</RibbonButton>
-        <RibbonButton>System1</RibbonButton>
-        <RibbonButton>System2</RibbonButton>
-        <RibbonButton>System3</RibbonButton>
-      </Ribbon>
+        <label htmlFor="jsonUploadInput" style={{ display: 'none' }} />
+        <input
+          id="jsonUploadInput"
+          type="file"
+          accept=".json"
+          ref={fileInputRef}
+          style={{ display: 'none' }}
+          onClick={() => {
+            fileInputRef.current.value = null;
+          }}
+          onChange={handleFileChange}
+        />
 
-      <Container>
-        <RightContainer>
-          <PanelHeader>Neuroglancer Layers</PanelHeader>
-          <HeaderRow>
-            <LayerTitle>Name</LayerTitle>
-            <LayerTitle>Layer Type</LayerTitle>
-          </HeaderRow>
-          <LayerList 
-            data={data} 
-            activeLayer={activeLayer} 
-            setActiveLayer={setActiveLayer} 
-            layerOps={layerOps}
+        <Ribbon>
+          <RibbonDropdown
+            trigger={<RibbonButton>File</RibbonButton>}
+            menuItems={[
+              { label: 'Import Layer', onClick: handleImportStateJSON },
+              { label: 'Import Viewer State', onClick: handleImportViewerJSON },
+              { label: 'Export Layer', onClick: handleExportJSON },
+            ]}
           />
-        </RightContainer>
-
-        <RightContainer>
-          <Menu
-            saveLayerState={saveLayerState}
-            activeLayerName={activeLayer?.name}
-            layerOps={layerOps}
+          <RibbonDropdown
+            trigger={<RibbonButton>Edit</RibbonButton>}
+            menuItems={[
+              { label: 'Undo', onClick: handleUndo },
+              { label: 'Redo', onClick: handleRedo },
+            ]}
           />
-        </RightContainer>
-      </Container>
-    </Main>
+          <RibbonDropdown
+            trigger={<RibbonButton>Plug-Ins</RibbonButton>}
+            menuItems={[
+              { label: 'Load Plugin A', onClick: loadPluginA },
+              { label: 'Load Plugin B', onClick: loadPluginB },
+            ]}
+          />
+        </Ribbon>
+
+        {/* <button
+          onClick={() => {
+            importModeRef.current = "layer";
+            fileInputRef.current?.click();
+          }}
+        >
+          Trigger Import
+        </button>
+
+        <input type="file" accept=".json" onChange={handleFileChange} /> */}
+
+
+
+        <Container>
+          <RightContainer>
+            <PanelHeader>Neuroglancer Layers</PanelHeader>
+            <HeaderRow>
+              <LayerTitle>Name</LayerTitle>
+              <LayerTitle>Layer Type</LayerTitle>
+            </HeaderRow>
+            <LayerList
+              data={data}
+              activeLayer={activeLayer}
+              setActiveLayer={setActiveLayer}
+              layerOps={layerOps}
+              trackTransforms={trackTransforms}
+            />
+          </RightContainer>
+
+          <RightContainer>
+            <Menu
+              saveLayerState={saveLayerState}
+              activeLayerName={activeLayer?.name}
+              activeLayerType={activeLayer?.type}
+              layerOps={layerOps}
+              saveTrackTransforms={saveTrackTransforms}
+            />
+          </RightContainer>
+        </Container>
+      </Main>
+    </SocketContext.Provider>
   );
 }
 
-const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
+const RibbonDropdown = ({ trigger, menuItems }) => {
+  const [open, setOpen] = useState(false);
+
+  const handleRibbonToggle = () => setOpen((prev) => !prev);
+
+  return (
+    <RibbonDropdownContainer
+      tabIndex={0}
+      onBlur={(e) => {
+        setTimeout(() => setOpen(false), 100); // Wait so button click registers before closing out
+      }}
+    >
+      <RibbonDropdownTrigger onClick={handleRibbonToggle}>
+        {trigger}
+      </RibbonDropdownTrigger>
+      {open && (
+        <RibbonDropdownMenu role="menu">
+          {menuItems.map(({ label, onClick }, index) => (
+            <DropdownItem key={index} role="menuitem">
+              <button onClick={onClick}>{label}</button>
+            </DropdownItem>
+          ))}
+        </RibbonDropdownMenu>
+      )}
+    </RibbonDropdownContainer>
+  );
+};
+
+
+const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransforms }) => {
   const [toggleStates, setToggleStates] = useState({});
 
   // Initialize toggle states from actual visibility data
@@ -159,7 +425,7 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
         data.forEach(layer => {
           const serverVisible = layer.visible !== false;
           const prevVisible = prevStates[layer.name];
-  
+
           // Only update if the server state changed
           if (prevVisible !== serverVisible) {
             updatedStates[layer.name] = serverVisible;
@@ -169,8 +435,8 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
       });
     }
   }, [data]);
-  
-  const handleToggle = async (layerName) => {
+
+  const handleLayerToggle = async (layerName) => {
     const newVisible = !toggleStates[layerName]; // Flip current state
 
     setToggleStates((prevStates) => ({
@@ -193,6 +459,8 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
     }
   };
 
+  console.log("trackTransforms in LayerList:", trackTransforms);
+
   return (
     <div>
       {data ? (
@@ -211,35 +479,38 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
               <span>{layer.name}</span>
               <em>{layer.type}</em>
             </LayerButton>
-            
-            <button
-              onClick={() => handleToggle(layer.name)}
-              style={{
-                marginLeft: 'auto',
-                backgroundColor: toggleStates[layer.name] ? '#4CAF50' : '#F44336', // Green for 'On', Red for 'Off'
-                color: 'white',
-                border: 'none',
-                borderRadius: '20px',
-                padding: '0.5rem 1rem',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                transition: 'background-color 0.3s, transform 0.2s',
-                boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
-              }}
-              onMouseEnter={(e) => {
-                e.currentTarget.style.transform = 'scale(1.05)';
-              }}
-              onMouseLeave={(e) => {
-                e.currentTarget.style.transform = 'scale(1)';
-              }}
-            >
-              {toggleStates[layer.name] ? 'On' : 'Off'}
-            </button>
 
-            <DropdownMenu
-              layerName={layer.name}
-              transformations={layerOps[layer.name]}
-            />
+            <div style={{ position: 'relative', width: '100%' }}>
+              <LayerDropdownMenu
+                layerName={layer.name}
+                transformDescriptions={trackTransforms[layer.name]}
+              />
+
+              <div style={{ position: 'absolute', top: 0, right: 0 }}>
+                <button
+                  onClick={() => handleLayerToggle(layer.name)}
+                  style={{
+                    backgroundColor: toggleStates[layer.name] ? '#4CAF50' : '#F44336',
+                    color: 'white',
+                    border: 'none',
+                    borderRadius: '20px',
+                    padding: '0.5rem 1rem',
+                    cursor: 'pointer',
+                    fontSize: '0.9rem',
+                    transition: 'background-color 0.3s, transform 0.2s',
+                    boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+                  }}
+                  onMouseEnter={(e) => {
+                    e.currentTarget.style.transform = 'scale(1.05)';
+                  }}
+                  onMouseLeave={(e) => {
+                    e.currentTarget.style.transform = 'scale(1)';
+                  }}
+                >
+                  {toggleStates[layer.name] ? 'On' : 'Off'}
+                </button>
+              </div>
+            </div>
           </div>
         ))
       ) : (
@@ -249,30 +520,34 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps }) => {
   );
 };
 
-const DropdownMenu = ({ layerName, transformations }) => {
+const LayerDropdownMenu = ({ layerName, transformDescriptions }) => {
   const [isOpen, setIsOpen] = useState(false);
-
+  console.log("Descriptions for", layerName, transformDescriptions);
   return (
-      <div>
-          <ShowTransformsButton onClick={() => setIsOpen(!isOpen)}>
-              {isOpen ? 'Hide' : 'Show Transforms'}
-          </ShowTransformsButton>
-          {isOpen && (
-            <ul style={{ listStyleType: 'none', padding: 0, margin: 0, fontSize: '0.8em' }}>
-            {transformations ? (
-              transformations.map((transformation, index) => (
-                <li key={index} style={{ marginBottom: '0.5em' }}>
-                  {JSON.stringify(transformation)}
-                </li>
-              ))
-            ) : (
-              <li style={{ marginBottom: '0.5em' }}>No transformations saved for {layerName}</li>
-            )}
-            </ul>
-          )}
-      </div>
+    <div>
+      <ShowTransformsButton onClick={() => setIsOpen(!isOpen)}>
+        {isOpen ? 'Hide' : 'Show Transforms'}
+      </ShowTransformsButton>
+
+      {isOpen && (
+        transformDescriptions && transformDescriptions.length > 0 ? (
+          <ol style={{ listStyleType: 'decimal', paddingLeft: '1.5em', marginTop: '0.5em', fontSize: '0.5em' }}>
+            {transformDescriptions.map((desc, index) => (
+              <li key={index} style={{ marginBottom: '0.5em' }}>
+                {desc}
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p style={{ marginBottom: '0.3em', paddingLeft: '1.5em', fontSize: '0.5em' }}>
+            No transform descriptions saved for {layerName}
+          </p>
+        )
+      )}
+    </div>
   );
 };
+
 
 const Main = styled.div`
 display: flex;
@@ -280,6 +555,50 @@ flex-direction: column;
 height: 100vh;
 overflow: auto;
 `
+
+const RibbonDropdownContainer = styled.div`
+  position: relative;
+  display: inline-block;
+  outline: none;
+`;
+
+const RibbonDropdownTrigger = styled.div`
+  cursor: pointer;
+`;
+
+const RibbonDropdownMenu = styled.ul`
+  position: absolute;
+  top: 100%;
+  left: 0;
+  list-style: none;
+  background-color: white;
+  opacity: 1;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-top: 0.3rem;
+  padding: 0.5rem 0;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.15);
+  z-index: 999;
+  width: max-content;
+  white-space: nowrap;
+`;
+
+const DropdownItem = styled.li`
+  padding: 0.5rem 1rem;
+
+  button {
+    border: none;
+    background: none;
+    width: 100%;
+    text-align: left;
+    font-size: 0.9rem;
+    cursor: pointer;
+
+    &:hover {
+      background-color: #f5f5f5;
+    }
+  }
+`;
 
 const LayerTitle = styled.span`
 font-size:0.8rem;
@@ -295,7 +614,7 @@ const Ribbon = styled.div`
   justify-content: flex-start;
   align-items: center;
   background-color: #f0f0f0;
-  padding: 10px 20px;
+  padding: 0 20px;
   border-radius: 5px;
   margin-bottom: 20px;
   box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
@@ -307,7 +626,6 @@ const RibbonButton = styled.button`
   color: #333;
   border: none;
   padding: 10px 15px;
-  margin: 0 5px;
   font-size: 14px;
   font-weight: 500;
   cursor: pointer;
@@ -320,8 +638,8 @@ const RibbonButton = styled.button`
 `;
 
 const Button = styled.button`
-background-color: ${(props)=>(props.selected) ? 'rgba(0, 0, 0, 0.8)': 'rgba(255, 255, 255, 0.9)'};
-color: ${(props)=>(props.selected) ? 'white': 'rgba(0, 0, 0, 0.9)'};
+background-color: ${(props) => (props.selected) ? 'rgba(0, 0, 0, 0.8)' : 'rgba(255, 255, 255, 0.9)'};
+color: ${(props) => (props.selected) ? 'white' : 'rgba(0, 0, 0, 0.9)'};
 float: left;
 outline: none;
 cursor: pointer;
@@ -423,7 +741,6 @@ border-radius: 5px;
 font-size: 30px;
 padding: 2rem 1rem 1rem 1rem;
 /* box-shadow: -5px 0px 10px 5px rgba(0,0,0,0.1); */
-z-index: 999;
 `
 
 const PanelHeader = styled.h3`

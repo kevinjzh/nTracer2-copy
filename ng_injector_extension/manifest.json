@@ -1,0 +1,22 @@
+{
+    "manifest_version": 3,
+    "name": "Neuroglancer Import Button",
+    "version": "1.0",
+    "description": "Injects a viewer import button into Neuroglancer.",
+    "content_scripts": [
+        {
+            "matches": [
+                "http://localhost:8085/viewer/*"
+            ],
+            "js": ["inject.js"],
+            "css": ["styles.css"],
+            "run_at": "document_idle",
+            "all_frames": true
+        }
+    ],
+    "permissions": ["activeTab"],
+    "host_permissions": [
+        "http://localhost:8085/*",
+        "http://localhost:8050/*"
+    ]
+}

@@ -1,0 +1,17 @@
+    Queries from BIL API and uses URL for below
+    App.js of BIL Image Explorerr
+    return (
+      <div className="App">
+        <Header />
+        <div className='menuContainer'>
+          <div className='menuButtons'>
+            <button className="toggle-button"></button>
+          </div>
+          <div className='menu container-closed'></div>
+        </div>
+        {neuroglancerLink ? <ImageViewer neuroglancerLink={neuroglancerLink} /> : <div className='middle noLink loading-text'>L O A D I N G &nbsp;<FontAwesomeIcon icon={icon({name: 'rotate'})} /> </div>}
+        <Footer />
+      </div>
+    );
+
+    inject script into landing html page
