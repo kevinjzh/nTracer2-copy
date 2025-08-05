@@ -993,10 +993,9 @@ async def upload_viewer_state(file: UploadFile = File(...)):
         
         viewer = get_state().viewer
         
-        # ✅ Apply new viewer state
         viewer.set_state(ViewerState(json_data=data))
         
-        # ✅ Broadcast new viewer state to all clients
+        # Broadcast new viewer state to all clients
         updated_state_json = neuroglancer.to_json_dump(viewer.state)
         updated_state_dict = json.loads(updated_state_json)
         await sio.emit("viewer-state-updated", updated_state_dict)

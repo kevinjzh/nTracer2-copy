@@ -284,7 +284,6 @@ export default function TransformMenu({ saveLayerState, activeLayerName, layerOp
             [0, 0, 0, 1],
           ];
   
-    // ✅ Always update the display to the composed one
     setComposedMatrices((prev) => ({
       ...prev,
       [activeLayerName]: newComposedHistory,
