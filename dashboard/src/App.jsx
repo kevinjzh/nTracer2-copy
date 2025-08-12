@@ -18,6 +18,9 @@ function App() {
   const fileInputRef = useRef(null);
   const importModeRef = useRef(null);
 
+  const [viewerReady, setViewerReady] = useState(false);
+
+
   const handleFileChange = (event) => {
     const file = event.target.files[0];
     if (!file) return;
@@ -29,7 +32,7 @@ function App() {
         const jsonData = JSON.parse(contents);
 
         if (importModeRef.current === 'layer') {
-          // ✅ Import a single layer
+          // Import a single layer
           if (!jsonData.type) {
             alert("Invalid layer JSON: missing 'type' field.");
             return;
@@ -44,10 +47,10 @@ function App() {
             body: formData,
           });
 
-          console.log("✅ Layer imported. Now fetching updated viewer_state...");
+          console.log("Layer imported. Now fetching updated viewer_state...");
 
         } else if (importModeRef.current === 'viewer') {
-          // ✅ Import full viewer state
+          // Import full viewer state
           if (!jsonData.layers) {
             alert("Invalid viewer state JSON: missing 'layers' field.");
             return;
@@ -61,25 +64,16 @@ function App() {
             body: formData,
           });
 
-          console.log("✅ Viewer state imported. Now fetching updated viewer_state...");
+          console.log("Viewer state imported. Now fetching updated viewer_state...");
         }
 
-        // ✅ After ANY import, always fetch the *latest* viewer_state
+        // After ANY import, always fetch the *latest* viewer_state
         const afterStateRes = await fetch(`${BASE_URL}/viewer_state`);
         const afterState = await afterStateRes.json();
+        console.log("📡 Sent updated viewer_state to Neuroglancer iframe:", afterState);
 
-        // ✅ Always push updated viewer_state to iframe Neuroglancer
-        const iframe = document.getElementById("interface");
-        if (iframe?.contentWindow) {
-          iframe.contentWindow.postMessage(
-            { "neuroglancer/set-state": afterState },
-            "*"
-          );
-          console.log("📡 Sent updated viewer_state to Neuroglancer iframe:", afterState);
-        } else {
-          console.warn("⚠️ No iframe found, cannot send updated viewer_state!");
-        }
-
+        // Always push updated viewer_state to iframe Neuroglancer
+        tryPostViewerState(afterState);
       } catch (error) {
         alert("Failed to read or upload JSON: " + error.message);
         console.error("Import error:", error);
@@ -157,6 +151,24 @@ function App() {
       };
     });
   };
+
+  const tryPostViewerState = (state, attempts = 5) => {
+    const iframe = document.getElementById("interface");
+
+    if (viewerReady && iframe?.contentWindow) {
+      iframe.contentWindow.postMessage(
+        { "neuroglancer/set-state": state },
+        "*"
+      );
+      console.log("📡 Sent updated viewer_state to Neuroglancer iframe:", state);
+    } else if (attempts > 0) {
+      console.warn("Viewer not ready, retrying in 250ms...");
+      setTimeout(() => tryPostViewerState(state, attempts - 1), 250);
+    } else {
+      console.error("Failed to send viewer state after multiple attempts.");
+    }
+  };
+
 
   // const saveTrackTransforms = (layerName, transformDescription) => {
   //   setTrackTransforms((prev) => ({
@@ -278,6 +290,7 @@ function App() {
       // 1. Neuroglancer inside iframe tells us it’s ready
       if (event.data?.["neuroglancer-ready"]) {
         console.log("✅ Neuroglancer inside iframe is ready");
+        setViewerReady(true);
 
         // ✅ Start periodic viewer_state sync *only after ready*
         syncInterval = setInterval(async () => {
@@ -318,21 +331,21 @@ function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ layerName }),
       });
-  
+
       // ✅ Update local UI state
       setData((prevLayers) => prevLayers.filter((l) => l.name !== layerName));
-  
+
       // ✅ Clear active layer if it was deleted
       if (activeLayer?.name === layerName) {
         setActiveLayer(null);
       }
-  
+
       console.log(`Layer ${layerName} deleted successfully`);
     } catch (err) {
       console.error("Error deleting layer:", err);
     }
   };
-  
+
 
 
   return (
@@ -503,7 +516,7 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransform
     <div>
       {data ? (
         data.map((layer, index) => (
-          <div key={index}>
+          <div key={index} style={{ marginBottom: "1.5em"}}>
             <LayerButton
               isActive={activeLayer?.name === layer.name}
               onClick={() => {
@@ -537,6 +550,7 @@ const LayerList = ({ data, activeLayer, setActiveLayer, layerOps, trackTransform
                     fontSize: '0.9rem',
                     transition: 'background-color 0.3s, transform 0.2s',
                     boxShadow: '0 4px 8px rgba(0, 0, 0, 0.2)',
+                    marginBottom: '1.5em'
                   }}
                   onMouseEnter={(e) => {
                     e.currentTarget.style.transform = 'scale(1.05)';
@@ -613,7 +627,8 @@ const LayerDropdownMenu = ({ layerName, transformDescriptions }) => {
             maxHeight: "250px",
             overflowY: "auto",
             paddingRight: "0.5em",
-            marginTop: "0.5em"
+            marginTop: "0.25em",
+            mmarginBottom: "0.25em"
           }}
         >
           {transformDescriptions && transformDescriptions.length > 0 ? (

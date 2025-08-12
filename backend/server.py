@@ -49,6 +49,7 @@ from fastapi import FastAPI, Request, Response, UploadFile, File, Form, HTTPExce
 from fastapi_socketio import SocketManager
 from fastapi.responses import RedirectResponse
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 import numpy as np
 
 logging.basicConfig(level=logging.INFO)
@@ -304,19 +305,27 @@ async def index() -> RedirectResponse:
         f"/viewer?viewer={quote_plus(viewer_url)}&dashboard={dashboard_url}"
     )
 
+
+
 @app.get("/viewer_state")
 async def get_viewer_state():
     try:
-        viewer = get_state().viewer
-        if not viewer:
-            return {"error": "No viewer initialized yet"}
+        state = get_state()
+        viewer = state.viewer if state else None
+
+        if viewer is None:
+            return JSONResponse({"error": "No viewer initialized yet"}, status_code=500)
+
+        if viewer.state is None:
+            return JSONResponse({"error": "Viewer state is not set yet"}, status_code=500)
 
         # Dump the entire current viewer state
         viewer_state_json = neuroglancer.to_json_dump(viewer.state)
         return json.loads(viewer_state_json)
+
     except Exception as e:
-        print("Error fetching viewer_state:", e)
-        return {"error": str(e)}
+        print("❌ Error fetching viewer_state:", e)
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 @app.get("/layers")
 def get_layers():
@@ -983,24 +992,47 @@ async def upload_layer(file: UploadFile = File(...), layer_name: str = Form(...)
     #     raise HTTPException(status_code=500, detail=f"Layer import failed: {e}")
 
 
+# @app.post("/import_viewer")
+# async def upload_viewer_state(file: UploadFile = File(...)):
+#     try:
+#         contents = await file.read()
+#         data = json.loads(contents.decode("utf-8"))
+#         if "layers" not in data:
+#             raise HTTPException(400, "Uploaded viewer state missing 'layers' field.")
+        
+#         viewer = get_state().viewer
+        
+#         viewer.set_state(ViewerState(json_data=data))
+        
+#         # Broadcast new viewer state to all clients
+#         updated_state_json = neuroglancer.to_json_dump(viewer.state)
+#         updated_state_dict = json.loads(updated_state_json)
+#         await sio.emit("viewer-state-updated", updated_state_dict)
+#         print("📡 Emitted viewer-state-updated after import")
+
+#         return {
+#             "message": "Viewer state loaded",
+#             "url": viewer.get_viewer_url()
+#         }
+#     except Exception as e:
+#         print("Viewer state import error: ", e)
+#         raise HTTPException(status_code=500, detail=f"Viewer import failed: {e}")
+
 @app.post("/import_viewer")
-async def upload_viewer_state(file: UploadFile = File(...)):
+async def upload_viewer_state(data: dict):  # Accept dict directly
     try:
-        contents = await file.read()
-        data = json.loads(contents.decode("utf-8"))
         if "layers" not in data:
             raise HTTPException(400, "Uploaded viewer state missing 'layers' field.")
-        
+                 
         viewer = get_state().viewer
-        
         viewer.set_state(ViewerState(json_data=data))
-        
+                 
         # Broadcast new viewer state to all clients
         updated_state_json = neuroglancer.to_json_dump(viewer.state)
         updated_state_dict = json.loads(updated_state_json)
         await sio.emit("viewer-state-updated", updated_state_dict)
-        print("📡 Emitted viewer-state-updated after import")
-
+        print("Emitted viewer-state-updated after import")
+         
         return {
             "message": "Viewer state loaded",
             "url": viewer.get_viewer_url()
